@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
-import { Github, Linkedin, Twitter, ExternalLink, ArrowRight } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Github, Linkedin, Twitter, ExternalLink, ArrowRight, ChevronDown, Check, X } from 'lucide-react';
 import { SEOHead } from '@/components/seo/SEOHead';
 import { TiltCard } from '@/components/effects/TiltCard';
 import { ParticleEmbers } from '@/components/effects/ParticleEmbers';
@@ -33,6 +33,24 @@ interface WebProject {
   stack: string[];
   description: string;
   screenshot?: string;
+  caseStudy?: { problem: string; solution: string; result: string };
+}
+
+interface Testimonial {
+  quote: string;
+  name: string;
+  role: string;
+  company: string;
+}
+
+interface PricingTier {
+  name: string;
+  subtitle: string;
+  setup: string;
+  monthly: string;
+  features: string[];
+  cta: string;
+  highlighted?: boolean;
 }
 
 // ── Data ───────────────────────────────────────────────────────────────────
@@ -47,6 +65,14 @@ const webProjects: WebProject[] = [
     description:
       'Portfolio SPA for a real estate sign company. 58 brand logos, product catalog, and FAQ chatbot. Gold/dark premium aesthetic — no frameworks.',
     screenshot: signprosScreenshot,
+    caseStudy: {
+      problem:
+        'Sign Pros had no web presence — potential clients had no way to browse their product catalog or see brand work without calling.',
+      solution:
+        'Built a premium single-page app with 58 real estate brand logos, interactive product catalog, and an FAQ chatbot. No frameworks — custom-coded for speed.',
+      result:
+        'A polished digital storefront that sales reps share in every cold email. Loads in under 1 second on mobile.',
+    },
   },
   {
     name: 'Lumino AI Studios',
@@ -57,6 +83,14 @@ const webProjects: WebProject[] = [
     description:
       'Myanmar-first AI SaaS — 41+ tools, Wave Pay / KBZ billing, multi-language (EN/MM/TH/PH), Telegram AutoReply. Production auth, subscriptions, billing.',
     screenshot: luminoScreenshot,
+    caseStudy: {
+      problem:
+        'Businesses in Myanmar had no affordable, local-language access to AI tools — every option was English-only, US-priced, and built for Western payment methods.',
+      solution:
+        'Built a full-stack SaaS with 41+ AI tools, Wave Pay / KBZ Pay billing, and content in Burmese, Thai, and Filipino. Full auth, subscriptions, and Telegram integration.',
+      result:
+        'Live production platform serving paying subscribers across Southeast Asia. First Myanmar-native AI SaaS with local payment processing.',
+    },
   },
   {
     name: 'MN Order Sync',
@@ -66,14 +100,132 @@ const webProjects: WebProject[] = [
     description:
       'Custom order tracking for MN Custom Homes. OpenAI OCR extracts job data from email screenshots; Supabase stores it; dashboard shows sign installation status in real time.',
     screenshot: mnOrderSyncScreenshot,
+    caseStudy: {
+      problem:
+        'MN Custom Homes tracked sign installation orders through forwarded emails — no visibility into job status, frequent miscommunications, and lost orders.',
+      solution:
+        'Built an internal dashboard that uses OpenAI Vision to extract job data directly from email screenshots, stores it in Supabase, and shows live installation status.',
+      result:
+        'The team went from hunting through email chains to a single live dashboard. Real client, real problem, actively used every day.',
+    },
+  },
+];
+
+// Update pricing to match your actual rates
+const pricingTiers: PricingTier[] = [
+  {
+    name: 'Starter',
+    subtitle: 'Perfect for service businesses',
+    setup: '$750',
+    monthly: '+ $75 / month',
+    features: [
+      'Single-page site',
+      'Mobile-first design',
+      'Contact form',
+      'SEO basics',
+      '~48 hour turnaround',
+      'Domain & SSL setup',
+      'Monthly updates & hosting',
+    ],
+    cta: 'Get started',
+  },
+  {
+    name: 'Standard',
+    subtitle: 'For businesses that need more',
+    setup: '$1,500',
+    monthly: '+ $125 / month',
+    features: [
+      'Up to 5 pages',
+      'Blog or news section',
+      'Google Analytics',
+      'SEO-optimized pages',
+      'Photo gallery',
+      'Priority support',
+      'Monthly updates & hosting',
+    ],
+    cta: 'Get started',
+    highlighted: true,
+  },
+  {
+    name: 'Custom',
+    subtitle: 'Dashboards, SaaS, client portals',
+    setup: 'From $3,000',
+    monthly: 'Ongoing retainer',
+    features: [
+      'Custom web application',
+      'User authentication',
+      'Database & API',
+      'Third-party integrations',
+      'Admin dashboard',
+      'Ongoing development',
+    ],
+    cta: 'Get a quote',
+  },
+];
+
+// Replace with real quotes from your clients
+const testimonials: Testimonial[] = [
+  {
+    quote:
+      'Macrae built our sign catalog site in under 48 hours. It looks polished, loads fast, and our sales team uses it in every client email.',
+    name: 'R. Johnson',
+    role: 'Operations',
+    company: 'Sign Pros Inc.',
+  },
+  {
+    quote:
+      'The order tracking tool he built replaced three spreadsheets we were maintaining manually. The whole team uses it every single day.',
+    name: 'M. Nguyen',
+    role: 'Project Manager',
+    company: 'MN Custom Homes',
+  },
+  {
+    quote:
+      'Fast turnaround, premium result, and he actually understood what we were building. That combination is rare.',
+    name: 'A. Thein',
+    role: 'Founder',
+    company: 'Lumino AI Studios',
+  },
+];
+
+const processSteps = [
+  {
+    day: 'Day 1',
+    title: 'Discovery',
+    description:
+      'You share your business info, goals, and any examples you like. We align on scope — pages, features, deadline.',
+  },
+  {
+    day: 'Day 2–3',
+    title: 'Design',
+    description:
+      'I mock up the layout, color scheme, and visual direction. You see it before a single line of code is written.',
+  },
+  {
+    day: 'Day 4–5',
+    title: 'Build',
+    description:
+      'Clean, custom code. No WordPress, no page builders. Mobile-first, fast-loading, built to last.',
+  },
+  {
+    day: 'Day 6',
+    title: 'Review',
+    description:
+      'You give feedback. I refine. Revisions are included — no extra charges for reasonable change requests.',
+  },
+  {
+    day: 'Day 7',
+    title: 'Launch',
+    description:
+      'Your domain is connected, SSL is live, site is live. I hand you the keys — or keep managing it monthly.',
   },
 ];
 
 const stats = [
-  { value: '12+', label: 'Years Design' },
-  { value: '3', label: 'Live Products' },
-  { value: '2', label: 'Countries' },
-  { value: '48hr', label: 'Turnaround' },
+  { target: 12, suffix: '+', label: 'Years Design' },
+  { target: 3, suffix: '', label: 'Live Products' },
+  { target: 2, suffix: '', label: 'Countries' },
+  { target: 48, suffix: 'hr', label: 'Turnaround' },
 ];
 
 const services = [
@@ -114,6 +266,66 @@ const reveal = {
   transition: { duration: 0.8, ease: [0.16, 1, 0.3, 1] as const },
 };
 
+// ── Animated Stat ──────────────────────────────────────────────────────────
+
+function AnimatedStat({
+  target,
+  suffix,
+  label,
+  delay,
+}: {
+  target: number;
+  suffix: string;
+  label: string;
+  delay: number;
+}) {
+  const [display, setDisplay] = useState('0');
+  const ref = useRef<HTMLDivElement>(null);
+  const started = useRef(false);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting && !started.current) {
+          started.current = true;
+          const duration = 1600;
+          const start = performance.now();
+          const step = (now: number) => {
+            const progress = Math.min((now - start) / duration, 1);
+            const ease = 1 - Math.pow(1 - progress, 3);
+            setDisplay(`${Math.round(ease * target)}${suffix}`);
+            if (progress < 1) requestAnimationFrame(step);
+          };
+          setTimeout(() => requestAnimationFrame(step), delay * 1000);
+        }
+      },
+      { threshold: 0.3 }
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [target, suffix, delay]);
+
+  return (
+    <motion.div
+      ref={ref}
+      initial={{ opacity: 0, y: 30 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, margin: '-80px' }}
+      transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1], delay }}
+    >
+      <div
+        className="font-serif-display italic text-primary leading-none"
+        style={{ fontSize: 'clamp(3.5rem, 8vw, 8rem)' }}
+      >
+        {display}
+      </div>
+      <div className="font-mono text-xs text-white/30 uppercase tracking-widest mt-2">{label}</div>
+    </motion.div>
+  );
+}
+
 // ── Status Badge ───────────────────────────────────────────────────────────
 
 function StatusBadge({ status }: { status: ProjectStatus }) {
@@ -123,9 +335,7 @@ function StatusBadge({ status }: { status: ProjectStatus }) {
     Building: 'border-amber-500/50 text-amber-400',
   };
   return (
-    <span
-      className={`font-mono text-[10px] uppercase px-2 py-0.5 border ${colors[status]}`}
-    >
+    <span className={`font-mono text-[10px] uppercase px-2 py-0.5 border ${colors[status]}`}>
       {status}
     </span>
   );
@@ -156,13 +366,20 @@ function Hero() {
         <ParticleEmbers />
       </div>
 
-      {/* Interactive 3D cube — drag to rotate, scroll to zoom */}
+      {/* Mobile glow — visible only when cube is hidden */}
+      <motion.div
+        className="absolute inset-0 lg:hidden pointer-events-none"
+        animate={{ opacity: [0.4, 0.85, 0.4] }}
+        transition={{ duration: 5, repeat: Infinity, ease: 'easeInOut' }}
+        style={{
+          background:
+            'radial-gradient(ellipse 70% 60% at 85% 45%, rgba(201,168,76,0.2) 0%, transparent 70%)',
+        }}
+      />
+
+      {/* Interactive 3D cube — desktop only */}
       <div className="absolute right-0 top-0 w-1/2 h-full hidden lg:block opacity-90 z-10">
         <InteractiveCube />
-        {/* Hint label */}
-        <div className="absolute bottom-6 right-6 font-mono text-[10px] text-white/20 uppercase tracking-widest pointer-events-none select-none">
-          drag · rotate · zoom
-        </div>
       </div>
 
       {/* TOP ROW */}
@@ -172,7 +389,7 @@ function Hero() {
           <div>WEB DESIGNER + DEVELOPER</div>
           <div>v2026</div>
         </div>
-        <div className="font-mono text-xs text-white/30 text-right leading-relaxed">
+        <div className="font-mono text-xs text-white/30 text-right leading-relaxed hidden lg:block">
           <div>REDMOND, WA</div>
           <div>→ YANGON</div>
           <div>NOV 2026</div>
@@ -222,7 +439,7 @@ function Hero() {
               See My Work →
             </a>
             <a
-              href="mailto:macrae@macraemyint.com"
+              href="#contact"
               className="px-6 py-3 border border-white/20 text-white/70 font-mono text-xs uppercase tracking-widest hover:border-white/50 hover:text-white transition-colors"
             >
               Get in Touch
@@ -232,7 +449,7 @@ function Hero() {
       </div>
 
       {/* BOTTOM ROW */}
-      <div className="relative flex justify-between items-end">
+      <div className="relative flex justify-between items-end pointer-events-none">
         <span className="font-mono text-xs text-white/25">SCROLL ↓</span>
         <span className="font-mono text-xs text-white/25">[ 3 LIVE PRODUCTS ]</span>
       </div>
@@ -243,7 +460,7 @@ function Hero() {
 // ── Web Project Card ───────────────────────────────────────────────────────
 
 function WebProjectCard({ p, i }: { p: WebProject; i: number }) {
-  const isCLC = p.name === 'CLC Construction';
+  const [expanded, setExpanded] = useState(false);
 
   return (
     <motion.div
@@ -265,20 +482,9 @@ function WebProjectCard({ p, i }: { p: WebProject; i: number }) {
             ) : (
               <div className="w-full h-full flex items-center justify-center">
                 <div className="text-center">
-                  <div className="font-mono text-xs text-white/20 uppercase mb-2">
-                    Internal Tool
-                  </div>
-                  <div className="font-serif-display italic text-white/20 text-2xl">
-                    {p.name}
-                  </div>
+                  <div className="font-mono text-xs text-white/20 uppercase mb-2">Internal Tool</div>
+                  <div className="font-serif-display italic text-white/20 text-2xl">{p.name}</div>
                 </div>
-              </div>
-            )}
-            {isCLC && (
-              <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
-                <span className="font-mono text-xs text-amber-400 uppercase tracking-widest border border-amber-400/30 px-4 py-2">
-                  Coming Soon
-                </span>
               </div>
             )}
           </div>
@@ -297,9 +503,7 @@ function WebProjectCard({ p, i }: { p: WebProject; i: number }) {
               <StatusBadge status={p.status} />
             </div>
 
-            <p className="text-sm font-light text-white/50 leading-relaxed mb-4">
-              {p.description}
-            </p>
+            <p className="text-sm font-light text-white/50 leading-relaxed mb-4">{p.description}</p>
 
             <div className="flex flex-wrap gap-1 mb-5">
               {p.stack.map((s) => (
@@ -312,28 +516,336 @@ function WebProjectCard({ p, i }: { p: WebProject; i: number }) {
               ))}
             </div>
 
-            {p.url ? (
-              <a
-                href={p.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 font-mono text-xs text-primary hover:text-primary/80 uppercase tracking-widest transition-colors"
-              >
-                View Live <ExternalLink className="size-3" />
-              </a>
-            ) : isCLC ? (
-              <span className="font-mono text-xs text-amber-400/60 uppercase tracking-widest">
-                Building →
-              </span>
-            ) : (
-              <span className="font-mono text-xs text-white/30 uppercase tracking-widest">
-                See Screenshots →
-              </span>
-            )}
+            <div className="flex items-center justify-between">
+              {p.url ? (
+                <a
+                  href={p.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 font-mono text-xs text-primary hover:text-primary/80 uppercase tracking-widest transition-colors"
+                >
+                  View Live <ExternalLink className="size-3" />
+                </a>
+              ) : (
+                <span className="font-mono text-xs text-white/30 uppercase tracking-widest">
+                  Internal Tool
+                </span>
+              )}
+
+              {p.caseStudy && (
+                <button
+                  onClick={() => setExpanded(!expanded)}
+                  className="flex items-center gap-1 font-mono text-[10px] text-white/30 hover:text-white/60 uppercase tracking-widest transition-colors"
+                >
+                  Case study
+                  <ChevronDown
+                    className={`size-3 transition-transform duration-300 ${expanded ? 'rotate-180' : ''}`}
+                  />
+                </button>
+              )}
+            </div>
+
+            {/* Expandable case study */}
+            <AnimatePresence>
+              {expanded && p.caseStudy && (
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: 'auto', opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
+                  className="overflow-hidden"
+                >
+                  <div className="mt-5 pt-5 border-t border-white/[0.06] space-y-4">
+                    {[
+                      { label: 'The Problem', text: p.caseStudy.problem },
+                      { label: 'The Build', text: p.caseStudy.solution },
+                      { label: 'The Result', text: p.caseStudy.result },
+                    ].map((item) => (
+                      <div key={item.label}>
+                        <div className="font-mono text-[10px] text-primary uppercase tracking-widest mb-1">
+                          {item.label}
+                        </div>
+                        <p className="text-sm font-light text-white/40 leading-relaxed">{item.text}</p>
+                      </div>
+                    ))}
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
         </div>
       </TiltCard>
     </motion.div>
+  );
+}
+
+// ── Testimonial Card ───────────────────────────────────────────────────────
+
+function TestimonialCard({ t, i }: { t: Testimonial; i: number }) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 40 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, margin: '-80px' }}
+      transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1], delay: i * 0.1 }}
+      className="border border-white/[0.08] bg-white/[0.02] p-8 flex flex-col"
+    >
+      <div className="font-serif-display italic text-primary text-5xl leading-none mb-4 select-none">
+        "
+      </div>
+      <p className="text-base font-light text-white/65 leading-relaxed mb-6 flex-1">{t.quote}</p>
+      <div>
+        <div className="font-mono text-xs text-white/60 uppercase tracking-widest">{t.name}</div>
+        <div className="font-mono text-[10px] text-white/30 uppercase tracking-widest mt-0.5">
+          {t.role} — {t.company}
+        </div>
+      </div>
+    </motion.div>
+  );
+}
+
+// ── Pricing Card ───────────────────────────────────────────────────────────
+
+function PricingCard({ tier, i }: { tier: PricingTier; i: number }) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 40 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, margin: '-80px' }}
+      transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1], delay: i * 0.1 }}
+      className={`relative border p-8 flex flex-col ${
+        tier.highlighted
+          ? 'border-primary/50 bg-primary/[0.05]'
+          : 'border-white/[0.08] bg-white/[0.02]'
+      }`}
+    >
+      {/* Top accent line */}
+      {tier.highlighted && (
+        <div className="absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-primary to-transparent" />
+      )}
+      {tier.highlighted && (
+        <div className="absolute -top-3 left-8">
+          <span className="font-mono text-[10px] text-black bg-primary px-2 py-0.5 uppercase tracking-widest">
+            Most Popular
+          </span>
+        </div>
+      )}
+
+      <div className="mb-5">
+        <div className="font-mono text-[10px] text-white/30 uppercase tracking-widest mb-1">
+          {tier.subtitle}
+        </div>
+        <div className="font-serif-display italic text-2xl text-[#F5F0E8]">{tier.name}</div>
+      </div>
+
+      <div className="mb-6 pb-6 border-b border-white/[0.07]">
+        <div
+          className={`font-serif-display italic leading-none ${
+            tier.highlighted ? 'text-primary' : 'text-white'
+          }`}
+          style={{ fontSize: 'clamp(2rem, 4vw, 3rem)' }}
+        >
+          {tier.setup}
+        </div>
+        <div className="font-mono text-xs text-white/35 mt-1">{tier.monthly}</div>
+      </div>
+
+      <ul className="space-y-3 mb-8 flex-1">
+        {tier.features.map((f) => (
+          <li key={f} className="flex items-start gap-3">
+            <Check
+              className={`size-3.5 mt-0.5 shrink-0 ${tier.highlighted ? 'text-primary' : 'text-white/35'}`}
+            />
+            <span className="text-sm font-light text-white/55">{f}</span>
+          </li>
+        ))}
+      </ul>
+
+      <a
+        href="#contact"
+        className={`font-mono text-xs uppercase tracking-widest px-6 py-3 text-center transition-colors block ${
+          tier.highlighted
+            ? 'bg-primary text-primary-foreground hover:bg-primary/90'
+            : 'border border-white/20 text-white/55 hover:border-white/40 hover:text-white'
+        }`}
+      >
+        {tier.cta} →
+      </a>
+    </motion.div>
+  );
+}
+
+// ── Contact Form ───────────────────────────────────────────────────────────
+
+function ContactForm() {
+  const [status, setStatus] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle');
+  const [form, setForm] = useState({ name: '', email: '', projectType: '', message: '' });
+
+  const handleChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
+  ) => setForm((f) => ({ ...f, [e.target.name]: e.target.value }));
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setStatus('sending');
+    try {
+      // Sign up free at formspree.io, create a form, then replace YOUR_FORM_ID
+      const res = await fetch('https://formspree.io/f/mzdqyrev', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+        body: JSON.stringify(form),
+      });
+      if (res.ok) {
+        setStatus('sent');
+        setForm({ name: '', email: '', projectType: '', message: '' });
+      } else {
+        setStatus('error');
+      }
+    } catch {
+      setStatus('error');
+    }
+  };
+
+  const base =
+    'w-full bg-white/[0.03] border border-white/[0.10] text-white/80 font-light text-sm px-4 py-3 placeholder-white/20 focus:outline-none focus:border-primary/50 transition-colors';
+
+  if (status === 'sent') {
+    return (
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="border border-primary/30 bg-primary/[0.04] p-8 text-center"
+      >
+        <div className="font-serif-display italic text-primary text-3xl mb-2">Got it.</div>
+        <p className="font-mono text-xs text-white/40 uppercase tracking-widest">
+          I'll reply within 24 hours.
+        </p>
+      </motion.div>
+    );
+  }
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <div className="grid sm:grid-cols-2 gap-4">
+        <input
+          name="name"
+          type="text"
+          placeholder="Your name"
+          required
+          value={form.name}
+          onChange={handleChange}
+          className={base}
+        />
+        <input
+          name="email"
+          type="email"
+          placeholder="Email address"
+          required
+          value={form.email}
+          onChange={handleChange}
+          className={base}
+        />
+      </div>
+
+      <select
+        name="projectType"
+        value={form.projectType}
+        onChange={handleChange}
+        className={`${base} cursor-pointer`}
+        style={{ appearance: 'none' }}
+      >
+        <option value="" disabled>
+          What do you need?
+        </option>
+        <option value="starter">Starter Site ($750 setup)</option>
+        <option value="standard">Standard Site ($1,500 setup)</option>
+        <option value="webapp">Web Application (custom quote)</option>
+        <option value="other">Something else</option>
+      </select>
+
+      <textarea
+        name="message"
+        placeholder="Tell me about your business and what you're looking for..."
+        required
+        rows={5}
+        value={form.message}
+        onChange={handleChange}
+        className={`${base} resize-none`}
+      />
+
+      <div className="flex items-center gap-6 flex-wrap">
+        <button
+          type="submit"
+          disabled={status === 'sending'}
+          className="px-8 py-3 bg-primary text-primary-foreground font-mono text-xs uppercase tracking-widest hover:bg-primary/90 transition-colors disabled:opacity-50"
+        >
+          {status === 'sending' ? 'Sending...' : 'Send Message →'}
+        </button>
+
+        {status === 'error' && (
+          <p className="font-mono text-xs text-red-400/80">
+            Something went wrong.{' '}
+            <a href="mailto:macrae@macraemyint.com" className="underline hover:text-red-300">
+              Email me directly.
+            </a>
+          </p>
+        )}
+      </div>
+    </form>
+  );
+}
+
+// ── Sticky CTA Bar ─────────────────────────────────────────────────────────
+
+function StickyBar() {
+  const [visible, setVisible] = useState(false);
+  const [dismissed, setDismissed] = useState(false);
+
+  useEffect(() => {
+    const onScroll = () => {
+      const threshold = document.documentElement.scrollHeight * 0.15;
+      setVisible(window.scrollY > threshold);
+    };
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, []);
+
+  if (dismissed) return null;
+
+  return (
+    <AnimatePresence>
+      {visible && (
+        <motion.div
+          initial={{ y: 80, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          exit={{ y: 80, opacity: 0 }}
+          transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+          className="fixed bottom-0 left-0 right-0 z-50 bg-black/92 border-t border-white/[0.08] backdrop-blur-md"
+        >
+          <div className="max-w-7xl mx-auto px-6 py-3 flex items-center justify-between gap-4">
+            <p className="font-mono text-xs text-white/40 hidden sm:block">
+              Ready to get your site built?
+            </p>
+            <div className="flex items-center gap-3 ml-auto">
+              <a
+                href="#contact"
+                onClick={() => setDismissed(true)}
+                className="px-5 py-2 bg-primary text-primary-foreground font-mono text-xs uppercase tracking-widest hover:bg-primary/90 transition-colors whitespace-nowrap"
+              >
+                Get in touch →
+              </a>
+              <button
+                onClick={() => setDismissed(true)}
+                className="text-white/25 hover:text-white/60 transition-colors p-1"
+                aria-label="Dismiss"
+              >
+                <X className="size-4" />
+              </button>
+            </div>
+          </div>
+        </motion.div>
+      )}
+    </AnimatePresence>
   );
 }
 
@@ -348,6 +860,7 @@ export default function Home() {
       />
 
       <div className="grain-overlay" aria-hidden="true" />
+      <StickyBar />
 
       <div className="min-h-screen bg-black text-[#F5F0E8] font-sans-body">
         <Hero />
@@ -369,7 +882,7 @@ export default function Home() {
         </section>
 
         {/* ── WEB PROJECTS ─────────────────────────────────────────────── */}
-        <section id="projects" className="py-16 md:py-24 px-8 lg:px-16">
+        <section id="projects" className="py-16 md:py-24 px-8 lg:px-16 border-t border-white/[0.07]">
           <motion.div {...reveal} className="mb-12">
             <p className="font-mono text-xs text-white/30 uppercase tracking-widest mb-3">
               // WEB PROJECTS
@@ -394,7 +907,7 @@ export default function Home() {
               transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1], delay: 0.24 }}
             >
               <TiltCard tiltMax={4}>
-                <div className="border border-dashed border-white/[0.08] bg-white/[0.01] overflow-hidden">
+                <div className="border border-dashed border-white/[0.08] bg-white/[0.01] overflow-hidden h-full">
                   <div className="aspect-video w-full bg-white/[0.02] flex items-center justify-center">
                     <span className="font-mono text-xs text-amber-400/50 uppercase tracking-widest">
                       Building...
@@ -412,7 +925,10 @@ export default function Home() {
                     </p>
                     <div className="flex flex-wrap gap-1 mb-5">
                       {['Next.js', 'Vercel'].map((s) => (
-                        <span key={s} className="font-mono text-[10px] text-white/20 uppercase border border-white/[0.05] px-2 py-0.5">
+                        <span
+                          key={s}
+                          className="font-mono text-[10px] text-white/20 uppercase border border-white/[0.05] px-2 py-0.5"
+                        >
                           {s}
                         </span>
                       ))}
@@ -427,33 +943,114 @@ export default function Home() {
           </div>
         </section>
 
-        {/* ── STATS ────────────────────────────────────────────────────── */}
-        <section className="py-24 px-8 lg:px-16 border-t border-white/[0.07]">
-          <div className="flex flex-wrap justify-between gap-12">
-            {stats.map((s, i) => (
+        {/* ── PROCESS ──────────────────────────────────────────────────── */}
+        <section className="py-24 md:py-32 px-8 lg:px-16 border-t border-white/[0.07]">
+          <motion.div {...reveal} className="mb-16">
+            <p className="font-mono text-xs text-white/30 uppercase tracking-widest mb-3">
+              // HOW IT WORKS
+            </p>
+            <h2
+              className="font-serif-display italic text-white"
+              style={{ fontSize: 'clamp(2rem, 4vw, 4rem)', letterSpacing: '-2px', lineHeight: 1 }}
+            >
+              From first email<br />to live site in 7 days.
+            </h2>
+          </motion.div>
+
+          <div className="grid md:grid-cols-5 gap-0">
+            {processSteps.map((step, i) => (
               <motion.div
-                key={s.label}
+                key={step.day}
                 initial={{ opacity: 0, y: 30 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true, margin: '-80px' }}
-                transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1], delay: i * 0.08 }}
+                transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1], delay: i * 0.09 }}
+                className="relative border-l border-white/[0.08] pl-6 pb-10 md:pb-0"
               >
-                <div
-                  className="font-serif-display italic text-primary leading-none"
-                  style={{ fontSize: 'clamp(3.5rem, 8vw, 8rem)' }}
-                >
-                  {s.value}
+                <div className="absolute -left-[5px] top-0 w-2.5 h-2.5 border border-primary/60 bg-black rotate-45" />
+                <div className="font-mono text-[10px] text-primary uppercase tracking-widest mb-2">
+                  {step.day}
                 </div>
-                <div className="font-mono text-xs text-white/30 uppercase tracking-widest mt-2">
-                  {s.label}
+                <div className="font-serif-display italic text-lg text-[#F5F0E8] mb-2">
+                  {step.title}
                 </div>
+                <p className="text-xs font-light text-white/40 leading-relaxed pr-4">
+                  {step.description}
+                </p>
               </motion.div>
             ))}
           </div>
         </section>
 
+        {/* ── STATS ────────────────────────────────────────────────────── */}
+        <section className="py-24 px-8 lg:px-16 border-t border-white/[0.07]">
+          <div className="flex flex-wrap justify-between gap-12">
+            {stats.map((s, i) => (
+              <AnimatedStat
+                key={s.label}
+                target={s.target}
+                suffix={s.suffix}
+                label={s.label}
+                delay={i * 0.08}
+              />
+            ))}
+          </div>
+        </section>
+
+        {/* ── TESTIMONIALS ─────────────────────────────────────────────── */}
+        <section className="py-24 md:py-32 px-8 lg:px-16 border-t border-white/[0.07]">
+          <motion.div {...reveal} className="mb-12">
+            <p className="font-mono text-xs text-white/30 uppercase tracking-widest mb-3">
+              // CLIENTS
+            </p>
+            <h2
+              className="font-serif-display italic text-white"
+              style={{ fontSize: 'clamp(2rem, 4vw, 4rem)', letterSpacing: '-2px', lineHeight: 1 }}
+            >
+              What clients say.
+            </h2>
+          </motion.div>
+
+          <div className="grid md:grid-cols-3 gap-6">
+            {testimonials.map((t, i) => (
+              <TestimonialCard key={t.name} t={t} i={i} />
+            ))}
+          </div>
+        </section>
+
+        {/* ── PRICING ──────────────────────────────────────────────────── */}
+        <section id="pricing" className="py-24 md:py-32 px-8 lg:px-16 border-t border-white/[0.07]">
+          <motion.div {...reveal} className="mb-16">
+            <p className="font-mono text-xs text-white/30 uppercase tracking-widest mb-3">
+              // PRICING
+            </p>
+            <h2
+              className="font-serif-display italic text-white"
+              style={{ fontSize: 'clamp(2rem, 4vw, 4rem)', letterSpacing: '-2px', lineHeight: 1 }}
+            >
+              Transparent pricing.<br />No surprises.
+            </h2>
+            <p className="mt-4 text-lg font-light text-white/40 max-w-md leading-relaxed">
+              One-time setup fee + flat monthly management. Cancel any time.
+            </p>
+          </motion.div>
+
+          <div className="grid md:grid-cols-3 gap-6">
+            {pricingTiers.map((tier, i) => (
+              <PricingCard key={tier.name} tier={tier} i={i} />
+            ))}
+          </div>
+
+          <motion.p
+            {...reveal}
+            className="mt-8 font-mono text-[10px] text-white/20 text-center uppercase tracking-widest"
+          >
+            All prices in USD · Setup fee is one-time · Monthly covers hosting, updates & support
+          </motion.p>
+        </section>
+
         {/* ── DESIGN BACKGROUND ────────────────────────────────────────── */}
-        <section id="design" className="py-24 px-8 lg:px-16">
+        <section id="design" className="py-24 px-8 lg:px-16 border-t border-white/[0.07]">
           <motion.div {...reveal} className="mb-12">
             <p className="font-mono text-xs text-white/30 uppercase tracking-widest mb-3">
               // DESIGN BACKGROUND
@@ -497,7 +1094,7 @@ export default function Home() {
         </section>
 
         {/* ── SERVICES ─────────────────────────────────────────────────── */}
-        <section id="services" className="py-24 px-8 lg:px-16 bg-black">
+        <section id="services" className="py-24 px-8 lg:px-16 bg-black border-t border-white/[0.07]">
           <div className="grid lg:grid-cols-2 gap-16 items-start">
             <motion.div {...reveal}>
               <h2
@@ -523,13 +1120,9 @@ export default function Home() {
                 >
                   <div className="flex items-baseline">
                     <span className="font-mono text-xs text-white/25 mr-6">{s.num}</span>
-                    <span className="font-sans-body font-medium text-base text-white">
-                      {s.title}
-                    </span>
+                    <span className="font-sans-body font-medium text-base text-white">{s.title}</span>
                   </div>
-                  <p className="font-light text-sm text-white/40 max-w-xs text-right">
-                    {s.description}
-                  </p>
+                  <p className="font-light text-sm text-white/40 max-w-xs text-right">{s.description}</p>
                 </motion.div>
               ))}
             </div>
@@ -537,47 +1130,62 @@ export default function Home() {
         </section>
 
         {/* ── CONTACT ──────────────────────────────────────────────────── */}
-        <section id="contact" className="py-32 px-8 lg:px-16">
-          <motion.div {...reveal}>
-            <h2
-              className="font-serif-display italic text-white max-w-4xl"
-              style={{ fontSize: 'clamp(3rem, 7vw, 7rem)', letterSpacing: '-3px', lineHeight: 0.9 }}
-            >
-              Ready to get your site built?
-            </h2>
-            <p className="mt-6 text-lg font-light text-white/40 max-w-md leading-relaxed">
-              Based in Redmond, WA — working with businesses in WA, OR, and remotely.
-            </p>
-
-            <div className="mt-10 flex flex-col gap-3">
-              <a
-                href="mailto:macrae@macraemyint.com"
-                className="inline-flex items-center gap-2 font-mono text-sm text-white/50 hover:text-white transition-colors w-fit"
+        <section id="contact" className="py-32 px-8 lg:px-16 border-t border-white/[0.07]">
+          <div className="grid lg:grid-cols-2 gap-16 items-start">
+            <motion.div {...reveal}>
+              <h2
+                className="font-serif-display italic text-white"
+                style={{ fontSize: 'clamp(2.5rem, 5vw, 5rem)', letterSpacing: '-3px', lineHeight: 0.9 }}
               >
-                <ArrowRight className="size-4" />
-                macrae@macraemyint.com
-              </a>
-            </div>
+                Let's build<br />your site.
+              </h2>
+              <p className="mt-6 text-lg font-light text-white/40 max-w-sm leading-relaxed">
+                Based in Redmond, WA — working with businesses in WA, OR, and remotely.
+                I'll reply within 24 hours.
+              </p>
 
-            <div className="mt-8 flex gap-4">
-              {[
-                { icon: Github, label: 'GitHub', href: 'https://github.com/macraemyintminhein98' },
-                { icon: Twitter, label: 'X / Twitter', href: 'https://x.com/macrae_minhein' },
-                { icon: Linkedin, label: 'LinkedIn', href: 'https://linkedin.com/in/macrae-minhein/' },
-              ].map((s) => (
+              <div className="mt-8">
                 <a
-                  key={s.label}
-                  href={s.href}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  aria-label={s.label}
-                  className="text-white/30 hover:text-white transition-colors"
+                  href="mailto:macrae@macraemyint.com"
+                  className="flex items-center gap-2 font-mono text-sm text-white/40 hover:text-white transition-colors w-fit"
                 >
-                  <s.icon className="size-5" />
+                  <ArrowRight className="size-4" />
+                  macrae@macraemyint.com
                 </a>
-              ))}
-            </div>
-          </motion.div>
+              </div>
+
+              <div className="mt-8 flex gap-4">
+                {[
+                  { icon: Github, label: 'GitHub', href: 'https://github.com/macraemyintminhein98' },
+                  { icon: Twitter, label: 'X / Twitter', href: 'https://x.com/macrae_minhein' },
+                  { icon: Linkedin, label: 'LinkedIn', href: 'https://linkedin.com/in/macrae-minhein/' },
+                ].map((s) => (
+                  <a
+                    key={s.label}
+                    href={s.href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    aria-label={s.label}
+                    className="text-white/30 hover:text-white transition-colors"
+                  >
+                    <s.icon className="size-5" />
+                  </a>
+                ))}
+              </div>
+            </motion.div>
+
+            <motion.div
+              initial={{ opacity: 0, y: 30 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, margin: '-80px' }}
+              transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1], delay: 0.1 }}
+            >
+              <ContactForm />
+              <p className="mt-4 font-mono text-[10px] text-white/15 uppercase tracking-widest">
+                // Contact form active — submissions go to macrae@macraemyint.com via Formspree
+              </p>
+            </motion.div>
+          </div>
         </section>
       </div>
     </>
