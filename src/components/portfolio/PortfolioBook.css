@@ -1,0 +1,210 @@
+/* ========================================
+   3D Flipbook — Realistic Page Turn
+   ======================================== */
+
+/* Perspective wrapper — gives depth to the 3D scene */
+.flipbook-perspective {
+  width: 100%;
+  max-width: 52rem;
+  margin: 0 auto;
+  perspective: 1800px;
+  perspective-origin: 50% 50%;
+}
+
+/* The 3D scene container */
+.flipbook-scene {
+  position: relative;
+  width: 100%;
+  padding-bottom: 70.6%; /* ~US Letter ratio */
+  transform-style: preserve-3d;
+}
+
+/* ---- Static base page (underneath) ---- */
+.flipbook-page-static {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  border-radius: 4px;
+  box-shadow:
+    0 2px 8px rgba(0, 0, 0, 0.12),
+    0 12px 40px rgba(0, 0, 0, 0.2);
+}
+
+/* ---- Shared image style ---- */
+.flipbook-img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  background: hsl(var(--card));
+  border-radius: 4px;
+}
+
+.flipbook-img-mirrored {
+  transform: scaleX(-1);
+}
+
+/* ---- The turning page ---- */
+.flipbook-page-turning {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  transform-style: preserve-3d;
+  /* NO overflow:hidden, NO border-radius on this element — they kill 3D */
+}
+
+/* Forward: hinge on the left (spine), page sweeps right-to-left */
+.flipbook-turn-forward {
+  transform-origin: left center;
+  animation: pageFlipForward 0.8s cubic-bezier(0.4, 0.0, 0.2, 1) forwards;
+}
+
+/* Backward: hinge on the right, page sweeps left-to-right */
+.flipbook-turn-backward {
+  transform-origin: right center;
+  animation: pageFlipBackward 0.8s cubic-bezier(0.4, 0.0, 0.2, 1) forwards;
+}
+
+/* ---- Front & back faces ---- */
+.flipbook-page-front,
+.flipbook-page-back {
+  position: absolute;
+  inset: 0;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  border-radius: 4px;
+  overflow: hidden; /* safe here — these are flat children */
+}
+
+.flipbook-page-front {
+  z-index: 2;
+}
+
+.flipbook-page-back {
+  z-index: 1;
+  transform: rotateY(180deg);
+}
+
+/* ---- Curl shadow on front face (darkens as page lifts) ---- */
+.flipbook-curl-shadow {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(
+    to left,
+    rgba(0, 0, 0, 0) 60%,
+    rgba(0, 0, 0, 0.25) 100%
+  );
+  animation: curlShadowFront 0.8s ease forwards;
+}
+
+/* ---- Curl shadow on back face ---- */
+.flipbook-curl-shadow-back {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(
+    to right,
+    rgba(0, 0, 0, 0) 60%,
+    rgba(0, 0, 0, 0.2) 100%
+  );
+  animation: curlShadowBack 0.8s ease forwards;
+}
+
+/* ---- Cast shadow on base page from the flipping page ---- */
+.flipbook-cast-shadow {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  pointer-events: none;
+  border-radius: 4px;
+  animation: castShadow 0.8s ease forwards;
+}
+
+/* ---- Navigation hot zones ---- */
+.flipbook-hotzone {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 40%;
+  z-index: 30;
+  cursor: pointer;
+  background: none;
+  border: none;
+  padding: 0;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.flipbook-hotzone:disabled {
+  cursor: default;
+}
+
+.flipbook-hotzone-left {
+  left: 0;
+}
+
+.flipbook-hotzone-right {
+  right: 0;
+}
+
+.flipbook-arrow {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 9999px;
+  background: hsl(var(--background) / 0.85);
+  backdrop-filter: blur(12px);
+  border: 1px solid hsl(var(--border));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.18);
+  transition: opacity 0.2s ease;
+}
+
+/* ============ KEYFRAMES ============ */
+
+/* Page flips from 0° to -180° around left edge */
+@keyframes pageFlipForward {
+  0% {
+    transform: rotateY(0deg);
+  }
+  100% {
+    transform: rotateY(-180deg);
+  }
+}
+
+/* Page flips from 180° back to 0° around right edge */
+@keyframes pageFlipBackward {
+  0% {
+    transform: rotateY(180deg);
+  }
+  100% {
+    transform: rotateY(0deg);
+  }
+}
+
+/* Shadow on front face intensifies then fades */
+@keyframes curlShadowFront {
+  0%   { opacity: 0; }
+  40%  { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+/* Shadow on back face appears mid-flip */
+@keyframes curlShadowBack {
+  0%   { opacity: 0; }
+  50%  { opacity: 0; }
+  70%  { opacity: 1; }
+  100% { opacity: 0.3; }
+}
+
+/* Shadow cast onto the base page */
+@keyframes castShadow {
+  0%   { box-shadow: inset 40px 0 80px -20px rgba(0, 0, 0, 0); }
+  50%  { box-shadow: inset 40px 0 80px -20px rgba(0, 0, 0, 0.15); }
+  100% { box-shadow: inset 0 0 0 0 rgba(0, 0, 0, 0); }
+}

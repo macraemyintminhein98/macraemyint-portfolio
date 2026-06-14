@@ -1,0 +1,470 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+/* Macrae Myint - JDM Car Illustration Portfolio
+   Dark automotive aesthetic with electric blue accent + orange fire
+   All colors MUST be HSL
+*/
+
+@import url('https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Barlow:wght@300;400;500;600&family=JetBrains+Mono:wght@300;400;500&display=swap');
+
+:root {
+  --background: hsl(0 0% 0%);
+  --foreground: hsl(40 33% 93%);
+  --card: hsl(0 0% 4%);
+  --card-foreground: hsl(40 33% 93%);
+  --popover: hsl(0 0% 4%);
+  --popover-foreground: hsl(40 33% 93%);
+  --primary: hsl(45 53% 54%);
+  --primary-foreground: hsl(0 0% 4%);
+  --secondary: hsl(0 0% 6%);
+  --secondary-foreground: hsl(40 33% 93%);
+  --muted: hsl(0 0% 6%);
+  --muted-foreground: hsl(40 10% 60%);
+  --accent: hsl(0 0% 8%);
+  --accent-foreground: hsl(45 53% 60%);
+  --destructive: hsl(0 62% 40%);
+  --destructive-foreground: hsl(0 0% 98%);
+  --border: hsl(0 0% 12%);
+  --input: hsl(0 0% 12%);
+  --ring: hsl(45 53% 54%);
+  --radius: 0.5rem;
+  --sidebar-background: hsl(222 25% 8%);
+  --sidebar-foreground: hsl(220 10% 80%);
+  --sidebar-primary: hsl(38 92% 52%);
+  --sidebar-primary-foreground: hsl(0 0% 100%);
+  --sidebar-accent: hsl(222 20% 14%);
+  --sidebar-accent-foreground: hsl(38 92% 60%);
+  --sidebar-border: hsl(222 20% 16%);
+  --sidebar-ring: hsl(38 92% 52%);
+
+  /* Custom Design Tokens */
+  --gradient-primary: linear-gradient(135deg, hsl(38 92% 52%), hsl(28 95% 55%));
+  --gradient-gold: linear-gradient(135deg, hsl(45 95% 60%), hsl(32 90% 50%));
+  --gradient-hero: linear-gradient(180deg, hsla(222 30% 6% / 0.85) 0%, hsla(222 30% 6% / 0.4) 50%, hsla(222 30% 6% / 0.9) 100%);
+  --shadow-glow: 0 0 60px hsla(38 92% 52% / 0.25);
+  --shadow-card: 0 4px 20px hsla(0 0% 0% / 0.3);
+  --font-display: 'Rajdhani', sans-serif;
+  --color-fire: hsl(15 100% 55%);
+  --color-fire-glow: hsl(30 100% 55%);
+}
+
+@theme {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-sidebar: var(--sidebar-background);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+
+  --radius-lg: var(--radius);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-sm: calc(var(--radius) - 4px);
+
+  --font-serif-display: 'Instrument Serif', serif;
+  --font-sans-body: 'Barlow', sans-serif;
+  --font-mono-label: 'JetBrains Mono', monospace;
+  --font-mono: 'JetBrains Mono', monospace;
+
+  --animate-accordion-down: accordion-down 0.2s ease-out;
+  --animate-accordion-up: accordion-up 0.2s ease-out;
+}
+
+/* ==========================================
+   LIQUID GLASS UI SYSTEM
+   ========================================== */
+.liquid-glass {
+  background: rgba(255,255,255,0.02);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  border: none;
+  box-shadow: inset 0 1px 1px rgba(255,255,255,0.08);
+  position: relative;
+  overflow: hidden;
+}
+.liquid-glass::before {
+  content: "";
+  position: absolute; inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(180deg,
+    rgba(255,255,255,0.3) 0%,
+    rgba(255,255,255,0.08) 30%,
+    rgba(255,255,255,0) 50%,
+    rgba(255,255,255,0.08) 70%,
+    rgba(255,255,255,0.3) 100%);
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+}
+.liquid-glass-strong {
+  background: rgba(255,255,255,0.04);
+  backdrop-filter: blur(40px);
+  -webkit-backdrop-filter: blur(40px);
+  box-shadow: inset 0 1px 1px rgba(255,255,255,0.12), 0 4px 24px rgba(0,0,0,0.4);
+  position: relative;
+  overflow: hidden;
+}
+.liquid-glass-strong::before {
+  content: "";
+  position: absolute; inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(180deg,
+    rgba(255,255,255,0.45) 0%,
+    rgba(255,255,255,0.1) 30%,
+    rgba(255,255,255,0) 50%,
+    rgba(255,255,255,0.1) 70%,
+    rgba(255,255,255,0.45) 100%);
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+}
+
+@keyframes marquee-scroll {
+  from { transform: translateX(0); }
+  to { transform: translateX(-33.333%); }
+}
+.animate-marquee {
+  animation: marquee-scroll 30s linear infinite;
+}
+
+@keyframes marquee-25 {
+  from { transform: translateX(0); }
+  to { transform: translateX(-25%); }
+}
+.animate-marquee-25 {
+  animation: marquee-25 45s linear infinite;
+}
+
+/* ==========================================
+   CINEMATIC / 3D ATMOSPHERE
+   ========================================== */
+@keyframes drift-a {
+  0%   { transform: translate3d(0,0,0) scale(1); }
+  50%  { transform: translate3d(8%, 6%, 0) scale(1.15); }
+  100% { transform: translate3d(0,0,0) scale(1); }
+}
+@keyframes drift-b {
+  0%   { transform: translate3d(0,0,0) scale(1.1); }
+  50%  { transform: translate3d(-7%, -5%, 0) scale(0.95); }
+  100% { transform: translate3d(0,0,0) scale(1.1); }
+}
+.animate-drift-a { animation: drift-a 18s ease-in-out infinite; }
+.animate-drift-b { animation: drift-b 22s ease-in-out infinite; }
+
+@keyframes hue-pulse {
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 0.9; }
+}
+.animate-hue-pulse { animation: hue-pulse 8s ease-in-out infinite; }
+
+/* Fixed film grain overlay */
+.grain-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  pointer-events: none;
+  opacity: 0.05;
+  mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-size: 200px 200px;
+}
+
+/* Vignette for cinematic depth */
+.cinematic-vignette {
+  position: fixed;
+  inset: 0;
+  z-index: 55;
+  pointer-events: none;
+  background: radial-gradient(ellipse at center, transparent 55%, rgba(0,0,0,0.55) 100%);
+}
+
+.preserve-3d { transform-style: preserve-3d; }
+
+@keyframes accordion-down {
+  from { height: 0; }
+  to { height: var(--radix-accordion-content-height); }
+}
+
+@keyframes accordion-up {
+  from { height: var(--radix-accordion-content-height); }
+  to { height: 0; }
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+}
+
+@keyframes pulse-glow {
+  0%, 100% { box-shadow: 0 0 20px hsla(210, 100%, 55%, 0.3); }
+  50% { box-shadow: 0 0 40px hsla(210, 100%, 55%, 0.5); }
+}
+
+@keyframes speed-line {
+  0% { transform: translateX(-100%); opacity: 0; }
+  50% { opacity: 1; }
+  100% { transform: translateX(200%); opacity: 0; }
+}
+
+/* Rising Sun animation */
+@keyframes risingSunRotate {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-family: 'Barlow', sans-serif;
+    background: #000;
+    color: #F5F0E8;
+  }
+}
+
+@layer utilities {
+  .hide-scrollbar {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+
+  .hide-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  
+  .text-gradient {
+    background: var(--gradient-primary);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  
+  .glow {
+    box-shadow: var(--shadow-glow);
+  }
+  
+  .animate-float {
+    animation: float 3s ease-in-out infinite;
+  }
+  
+  .animate-pulse-glow {
+    animation: pulse-glow 2s ease-in-out infinite;
+  }
+  
+  .card-shadow {
+    box-shadow: var(--shadow-card);
+  }
+
+  .font-display {
+    font-family: var(--font-display);
+  }
+
+  .font-mono-label {
+    font-family: var(--font-mono-label);
+  }
+
+  .font-mono {
+    font-family: 'JetBrains Mono', monospace !important;
+  }
+}
+
+/* ==========================================
+   NOISE / GRAIN OVERLAY
+   ========================================== */
+.noise-overlay {
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+  background-repeat: repeat;
+  opacity: 0.5;
+  mix-blend-mode: overlay;
+  z-index: 1;
+}
+
+/* ==========================================
+   RISING SUN RAYS
+   ========================================== */
+.rising-sun {
+  width: 120vmax;
+  height: 120vmax;
+  border-radius: 50%;
+  background: conic-gradient(
+    from 0deg,
+    transparent 0deg, hsla(15, 100%, 55%, 0.03) 5deg,
+    transparent 10deg, hsla(15, 100%, 55%, 0.03) 15deg,
+    transparent 20deg, hsla(15, 100%, 55%, 0.03) 25deg,
+    transparent 30deg, hsla(15, 100%, 55%, 0.03) 35deg,
+    transparent 40deg, hsla(15, 100%, 55%, 0.03) 45deg,
+    transparent 50deg, hsla(15, 100%, 55%, 0.03) 55deg,
+    transparent 60deg, hsla(15, 100%, 55%, 0.03) 65deg,
+    transparent 70deg, hsla(15, 100%, 55%, 0.03) 75deg,
+    transparent 80deg, hsla(15, 100%, 55%, 0.03) 85deg,
+    transparent 90deg, hsla(15, 100%, 55%, 0.03) 95deg,
+    transparent 100deg, hsla(15, 100%, 55%, 0.03) 105deg,
+    transparent 110deg, hsla(15, 100%, 55%, 0.03) 115deg,
+    transparent 120deg, hsla(15, 100%, 55%, 0.03) 125deg,
+    transparent 130deg, hsla(15, 100%, 55%, 0.03) 135deg,
+    transparent 140deg, hsla(15, 100%, 55%, 0.03) 145deg,
+    transparent 150deg, hsla(15, 100%, 55%, 0.03) 155deg,
+    transparent 160deg, hsla(15, 100%, 55%, 0.03) 165deg,
+    transparent 170deg, hsla(15, 100%, 55%, 0.03) 175deg,
+    transparent 180deg, hsla(15, 100%, 55%, 0.03) 185deg,
+    transparent 190deg, hsla(15, 100%, 55%, 0.03) 195deg,
+    transparent 200deg, hsla(15, 100%, 55%, 0.03) 205deg,
+    transparent 210deg, hsla(15, 100%, 55%, 0.03) 215deg,
+    transparent 220deg, hsla(15, 100%, 55%, 0.03) 225deg,
+    transparent 230deg, hsla(15, 100%, 55%, 0.03) 235deg,
+    transparent 240deg, hsla(15, 100%, 55%, 0.03) 245deg,
+    transparent 250deg, hsla(15, 100%, 55%, 0.03) 255deg,
+    transparent 260deg, hsla(15, 100%, 55%, 0.03) 265deg,
+    transparent 270deg, hsla(15, 100%, 55%, 0.03) 275deg,
+    transparent 280deg, hsla(15, 100%, 55%, 0.03) 285deg,
+    transparent 290deg, hsla(15, 100%, 55%, 0.03) 295deg,
+    transparent 300deg, hsla(15, 100%, 55%, 0.03) 305deg,
+    transparent 310deg, hsla(15, 100%, 55%, 0.03) 315deg,
+    transparent 320deg, hsla(15, 100%, 55%, 0.03) 325deg,
+    transparent 330deg, hsla(15, 100%, 55%, 0.03) 335deg,
+    transparent 340deg, hsla(15, 100%, 55%, 0.03) 345deg,
+    transparent 350deg, hsla(15, 100%, 55%, 0.03) 355deg,
+    transparent 360deg
+  );
+  animation: risingSunRotate 120s linear infinite;
+  opacity: 1;
+}
+
+/* ==========================================
+   KANJI WATERMARKS
+   ========================================== */
+.kanji-watermark {
+  color: hsla(210, 100%, 55%, 0.03);
+  font-family: 'Noto Sans JP', 'MS Gothic', serif;
+  line-height: 1;
+}
+
+/* ==========================================
+   NAV LINK HOVER UNDERLINE
+   ========================================== */
+.nav-link-hover::after {
+  content: '';
+  position: absolute;
+  bottom: -4px;
+  left: 0;
+  width: 100%;
+  height: 2px;
+  background: linear-gradient(90deg, hsl(210 100% 55%), hsl(15 100% 55%));
+  transform: scaleX(0);
+  transform-origin: right;
+  transition: transform 0.3s ease;
+  border-radius: 2px;
+}
+
+.nav-link-hover:hover::after {
+  transform: scaleX(1);
+  transform-origin: left;
+}
+
+/* ==========================================
+   GLITCH TEXT ON HOVER
+   ========================================== */
+.glitch-text {
+  position: relative;
+  display: inline-block;
+}
+
+.glitch-text:hover {
+  animation: glitchSkew 0.5s ease;
+}
+
+.glitch-text::before,
+.glitch-text::after {
+  content: attr(data-text);
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: inherit;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.glitch-text:hover::before {
+  animation: glitch1 0.3s ease;
+  opacity: 0.8;
+  color: hsl(15 100% 55%);
+  -webkit-text-fill-color: hsl(15 100% 55%);
+}
+
+.glitch-text:hover::after {
+  animation: glitch2 0.3s ease;
+  opacity: 0.8;
+  color: hsl(210 100% 55%);
+  -webkit-text-fill-color: hsl(210 100% 55%);
+}
+
+@keyframes glitch1 {
+  0% { transform: translate(0); }
+  20% { transform: translate(-3px, 2px); }
+  40% { transform: translate(3px, -2px); }
+  60% { transform: translate(-2px, -1px); }
+  80% { transform: translate(2px, 1px); }
+  100% { transform: translate(0); }
+}
+
+@keyframes glitch2 {
+  0% { transform: translate(0); }
+  20% { transform: translate(3px, -2px); }
+  40% { transform: translate(-3px, 2px); }
+  60% { transform: translate(2px, 1px); }
+  80% { transform: translate(-2px, -1px); }
+  100% { transform: translate(0); }
+}
+
+@keyframes glitchSkew {
+  0% { transform: skew(0deg); }
+  20% { transform: skew(-2deg); }
+  40% { transform: skew(1deg); }
+  60% { transform: skew(-1deg); }
+  80% { transform: skew(0.5deg); }
+  100% { transform: skew(0deg); }
+}
+
+/* Hide default cursor on desktop for custom cursor */
+@media (pointer: fine) {
+  body, a, button, [role="button"] {
+    cursor: none !important;
+  }
+}

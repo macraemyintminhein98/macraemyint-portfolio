@@ -1,0 +1,10 @@
+# Macrae Myint
+
+> Portfolio and services site for Macrae Myint — graphic designer (12+ years), AI systems builder, and entrepreneur shipping SaaS products, trading bots, and automation pipelines. Includes a dedicated JDM car illustration body of work.
+
+## Pages
+
+- [Home](/): Designer, developer, and builder portfolio with hero, about, projects, services, design work, and contact.
+- [Portfolio](/portfolio): Full gallery of design and illustration projects, filterable by category.
+- [About](/about): Background, experience, and skills.
+- [Contact](/contact): Ways to get in touch and commission work.
