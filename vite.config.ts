@@ -16,4 +16,19 @@ export default defineConfig(({ mode }) => ({
       "@": path.resolve(__dirname, "./src"),
     },
   },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          // Split Three.js (large) into its own chunk — loads only on Home
+          'three-vendor': ['three'],
+          // React core
+          'react-vendor': ['react', 'react-dom', 'react-router-dom'],
+          // Animation
+          'framer': ['framer-motion'],
+        },
+      },
+    },
+    chunkSizeWarningLimit: 600,
+  },
 }));

@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { ExternalLink } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { projects } from '@/data/projects';
 import { PortfolioGrid } from '@/components/portfolio/PortfolioGrid';
 import { TiltCard } from '@/components/effects/TiltCard';
@@ -9,6 +10,7 @@ import { SEOHead } from '@/components/seo/SEOHead';
 // Web project screenshots
 import signprosScreenshot from '@/assets/projects/signpros-screenshot.png';
 import luminoScreenshot from '@/assets/projects/lumino-screenshot.png';
+import mnOrderSyncScreenshot from '@/assets/projects/mn-order-sync-screenshot.png';
 
 // ── Types & data ───────────────────────────────────────────────────────────
 
@@ -20,6 +22,7 @@ interface WebProjectCard {
   id: string;
   name: string;
   url?: string;
+  slug?: string;
   status: ProjectStatus;
   category: string;
   stack: string[];
@@ -33,6 +36,7 @@ const webProjectCards: WebProjectCard[] = [
     id: 'signpros',
     name: 'SignPros Demo',
     url: 'https://signpros-demo.vercel.app',
+    slug: 'signpros-demo',
     status: 'Live',
     category: 'Business Website',
     stack: ['Vanilla JS', 'CSS', 'HTML'],
@@ -44,6 +48,7 @@ const webProjectCards: WebProjectCard[] = [
     id: 'lumino',
     name: 'Lumino AI Studios',
     url: 'https://app.luminoaistudiosmm.com',
+    slug: 'lumino-ai-studios',
     status: 'Live',
     category: 'Web Application / SaaS',
     stack: ['Next.js', 'MongoDB', 'NextAuth', 'Vercel'],
@@ -59,6 +64,8 @@ const webProjectCards: WebProjectCard[] = [
     stack: ['Next.js', 'Supabase', 'OpenAI Vision'],
     description:
       'Custom order tracking for MN Custom Homes. OpenAI OCR extracts job data from email screenshots; Supabase stores it; dashboard shows sign installation status in real time.',
+    screenshot: mnOrderSyncScreenshot,
+    slug: 'mn-order-sync',
   },
   {
     id: 'clc',
@@ -163,24 +170,29 @@ function WebCard({ p, i }: { p: WebProjectCard; i: number }) {
               ))}
             </div>
 
-            {p.url ? (
-              <a
-                href={p.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 font-mono text-xs text-primary hover:text-primary/80 uppercase tracking-widest transition-colors"
-              >
-                View Live <ExternalLink className="size-3" />
-              </a>
-            ) : p.comingSoon ? (
-              <span className="font-mono text-xs text-amber-400/60 uppercase tracking-widest">
-                Building →
-              </span>
-            ) : (
-              <span className="font-mono text-xs text-white/30 uppercase tracking-widest">
-                Internal Tool — See Screenshots →
-              </span>
-            )}
+            <div className="flex flex-wrap items-center gap-4">
+              {p.url && (
+                <a
+                  href={p.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 font-mono text-xs text-primary hover:text-primary/80 uppercase tracking-widest transition-colors"
+                >
+                  View Live <ExternalLink className="size-3" />
+                </a>
+              )}
+              {p.slug && (
+                <Link
+                  to={`/project/${p.slug}`}
+                  className="inline-flex items-center gap-1 font-mono text-xs text-white/40 hover:text-white uppercase tracking-widest transition-colors"
+                >
+                  Case Study →
+                </Link>
+              )}
+              {p.comingSoon && (
+                <span className="font-mono text-xs text-amber-400/60 uppercase tracking-widest">Building →</span>
+              )}
+            </div>
           </div>
         </div>
       </TiltCard>

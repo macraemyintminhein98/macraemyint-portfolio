@@ -1,4 +1,4 @@
-import type { Project, ProjectCategory } from '@/types';
+import type { Project, ProjectCategory } from '@/types'; // CaseStudy used via Project.caseStudy
 
 // Web project screenshots
 import signprosScreenshot from '@/assets/projects/signpros-screenshot.png';
@@ -29,18 +29,18 @@ export const projects: Project[] = [
     year: '2025',
     slug: 'signpros-demo',
     coverImage: signprosScreenshot,
-    description:
-      'Portfolio SPA for a real estate sign company. 58 real estate brand logos, product catalog, FAQ chatbot, gold/dark premium aesthetic. Vanilla JS, fully custom — no frameworks.',
+    description: 'Portfolio SPA for a real estate sign company. 58 real estate brand logos, product catalog, FAQ chatbot, gold/dark premium aesthetic. Vanilla JS, fully custom — no frameworks.',
     client: 'Sign Pros Inc.',
     tools: 'Vanilla JS · CSS · HTML',
-    images: [
-      {
-        id: 'signpros-1',
-        src: signprosScreenshot,
-        alt: 'SignPros Demo — real estate sign company portfolio',
-        aspectRatio: 'landscape',
-      },
-    ],
+    liveUrl: 'https://signpros-demo.vercel.app',
+    status: 'Live' as const,
+    stack: ['Vanilla JS', 'CSS', 'HTML'],
+    caseStudy: {
+      problem: "Sign Pros had no web presence. Prospects receiving their sales emails had nowhere to verify the company's work, browse their product catalog, or get quick answers — so leads went cold.",
+      solution: 'Built a fully custom single-page portfolio site with 58 real estate brand logos, a full product catalog organized by sign type, and an interactive FAQ chatbot — all in pure Vanilla JS with zero frameworks. Gold/dark premium aesthetic to match the company positioning.',
+      result: 'Live and used as a direct link in sales emails. Visitors can see the full catalog and get answers without a phone call — exactly what a B2B sign company needs to convert cold outreach into conversations.',
+    },
+    images: [{ id: 'signpros-1', src: signprosScreenshot, alt: 'SignPros Demo — real estate sign company portfolio', aspectRatio: 'landscape' as const }],
   },
   {
     id: 'lumino-ai-studios',
@@ -49,18 +49,18 @@ export const projects: Project[] = [
     year: '2025',
     slug: 'lumino-ai-studios',
     coverImage: luminoScreenshot,
-    description:
-      'Myanmar-first AI SaaS platform with 41+ AI tools, Wave Pay/KBZ payment integration, multi-language (EN/MM/TH/PH), Telegram AutoReply. Production-grade auth, subscriptions, and billing.',
+    description: 'Myanmar-first AI SaaS platform with 41+ AI tools, Wave Pay/KBZ payment integration, multi-language (EN/MM/TH/PH), Telegram AutoReply. Production-grade auth, subscriptions, and billing.',
     client: 'Lumino AI Studios',
     tools: 'Next.js · MongoDB Atlas · NextAuth · Vercel',
-    images: [
-      {
-        id: 'lumino-1',
-        src: luminoScreenshot,
-        alt: 'Lumino AI Studios — Myanmar-first AI SaaS platform',
-        aspectRatio: 'landscape',
-      },
-    ],
+    liveUrl: 'https://app.luminoaistudiosmm.com',
+    status: 'Live' as const,
+    stack: ['Next.js', 'MongoDB Atlas', 'NextAuth', 'Vercel'],
+    caseStudy: {
+      problem: 'Myanmar had no local AI SaaS product. Users were paying in USD for tools not built for their language, payment methods, or usage patterns — a gap no one had filled.',
+      solution: 'Built a full-stack SaaS from scratch: 41+ AI tools, local payment integration (Wave Pay, KBZ), four-language support (EN/MM/TH/PH), a Telegram AutoReply system, and a complete subscription billing stack with auth and user management.',
+      result: 'Live in production with paying subscribers. The first Myanmar-first AI platform with local payment methods. Every layer — auth, billing, multi-language routing, and AI tool orchestration — is custom-built and maintained.',
+    },
+    images: [{ id: 'lumino-1', src: luminoScreenshot, alt: 'Lumino AI Studios — Myanmar-first AI SaaS platform', aspectRatio: 'landscape' as const }],
   },
   {
     id: 'mn-order-sync',
@@ -69,18 +69,17 @@ export const projects: Project[] = [
     year: '2025',
     slug: 'mn-order-sync',
     coverImage: mnOrderSyncScreenshot,
-    description:
-      'Custom order tracking web app for MN Custom Homes. OpenAI Vision OCR extracts order data from email screenshots, Supabase stores it, custom dashboard shows installation status in real time.',
+    description: 'Custom order tracking web app for MN Custom Homes. OpenAI Vision OCR extracts order data from email screenshots, Supabase stores it, custom dashboard shows installation status in real time.',
     client: 'MN Custom Homes',
     tools: 'Next.js · Supabase · OpenAI Vision API',
-    images: [
-      {
-        id: 'mn-1',
-        src: mnOrderSyncScreenshot,
-        alt: 'MN Order Sync — internal order tracking dashboard',
-        aspectRatio: 'landscape',
-      },
-    ],
+    status: 'Internal' as const,
+    stack: ['Next.js', 'Supabase', 'OpenAI Vision API'],
+    caseStudy: {
+      problem: 'MN Custom Homes tracked sign installation orders through emails and spreadsheets. Jobs were getting missed, status was invisible, and chasing updates wasted hours each week.',
+      solution: 'Built a custom internal web app: paste or forward an order email, and OpenAI Vision OCR extracts the job details automatically. Supabase stores every record. A real-time dashboard shows all active jobs, their status, and install dates — no manual data entry.',
+      result: "The client uses it daily. Order chaos eliminated. The team sees every job's status at a glance without digging through email — and new orders go from inbox to dashboard in under 10 seconds.",
+    },
+    images: [{ id: 'mn-1', src: mnOrderSyncScreenshot, alt: 'MN Order Sync — internal order tracking dashboard', aspectRatio: 'landscape' as const }],
   },
   {
     id: 'clc-construction',

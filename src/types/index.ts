@@ -1,6 +1,5 @@
 /**
  * Core TypeScript interfaces for Macrae Myint Portfolio
- * JDM Car Illustration Specialist
  */
 
 export type ProjectCategory = 
@@ -23,6 +22,12 @@ export interface ProjectImage {
   caption?: string;
 }
 
+export interface CaseStudy {
+  problem: string;
+  solution: string;
+  result: string;
+}
+
 export interface Project {
   id: string;
   title: string;
@@ -37,6 +42,10 @@ export interface Project {
   camera?: string;
   slug: string;
   dribbbleUrl?: string;
+  liveUrl?: string;
+  stack?: string[];
+  status?: 'Live' | 'Internal' | 'Building';
+  caseStudy?: CaseStudy;
 }
 
 export interface Skill {

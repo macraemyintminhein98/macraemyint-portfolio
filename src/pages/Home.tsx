@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { Link } from 'react-router-dom';
 import { Github, Linkedin, Twitter, ExternalLink, ArrowRight, ChevronDown, Check, X } from 'lucide-react';
 import { SEOHead } from '@/components/seo/SEOHead';
 import { TiltCard } from '@/components/effects/TiltCard';
@@ -28,6 +29,7 @@ type ProjectStatus = 'Live' | 'Internal' | 'Building';
 interface WebProject {
   name: string;
   url?: string;
+  slug?: string;
   status: ProjectStatus;
   category: string;
   stack: string[];
@@ -59,6 +61,7 @@ const webProjects: WebProject[] = [
   {
     name: 'SignPros Demo',
     url: 'https://signpros-demo.vercel.app',
+    slug: 'signpros-demo',
     status: 'Live',
     category: 'Business Website',
     stack: ['Vanilla JS', 'CSS', 'HTML'],
@@ -77,6 +80,7 @@ const webProjects: WebProject[] = [
   {
     name: 'Lumino AI Studios',
     url: 'https://app.luminoaistudiosmm.com',
+    slug: 'lumino-ai-studios',
     status: 'Live',
     category: 'Web Application / SaaS',
     stack: ['Next.js', 'MongoDB', 'NextAuth', 'Vercel'],
@@ -94,6 +98,7 @@ const webProjects: WebProject[] = [
   },
   {
     name: 'MN Order Sync',
+    slug: 'mn-order-sync',
     status: 'Internal',
     category: 'Client Web App',
     stack: ['Next.js', 'Supabase', 'OpenAI Vision'],
@@ -426,11 +431,27 @@ function Hero() {
             12 years of design discipline behind every project.
           </motion.p>
 
+          {/* Available indicator */}
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={ready ? { opacity: 1, y: 0 } : undefined}
+            transition={{ duration: 0.8, delay: 0.7, ease: [0.16, 1, 0.3, 1] }}
+            className="mt-8 inline-flex items-center gap-2"
+          >
+            <span className="relative flex h-2 w-2">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
+            </span>
+            <span className="font-mono text-xs text-emerald-400/80 uppercase tracking-widest">
+              Taking on new clients
+            </span>
+          </motion.div>
+
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={ready ? { opacity: 1, y: 0 } : undefined}
             transition={{ duration: 1, delay: 0.8, ease: [0.16, 1, 0.3, 1] }}
-            className="mt-10 flex flex-wrap gap-4"
+            className="mt-6 flex flex-wrap gap-4"
           >
             <a
               href="#projects"
@@ -516,28 +537,38 @@ function WebProjectCard({ p, i }: { p: WebProject; i: number }) {
               ))}
             </div>
 
-            <div className="flex items-center justify-between">
-              {p.url ? (
-                <a
-                  href={p.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-2 font-mono text-xs text-primary hover:text-primary/80 uppercase tracking-widest transition-colors"
-                >
-                  View Live <ExternalLink className="size-3" />
-                </a>
-              ) : (
-                <span className="font-mono text-xs text-white/30 uppercase tracking-widest">
-                  Internal Tool
-                </span>
-              )}
+            <div className="flex items-center justify-between flex-wrap gap-3">
+              <div className="flex flex-wrap items-center gap-4">
+                {p.url ? (
+                  <a
+                    href={p.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-2 font-mono text-xs text-primary hover:text-primary/80 uppercase tracking-widest transition-colors"
+                  >
+                    View Live <ExternalLink className="size-3" />
+                  </a>
+                ) : (
+                  <span className="font-mono text-xs text-white/30 uppercase tracking-widest">
+                    Internal Tool
+                  </span>
+                )}
+                {p.slug && (
+                  <Link
+                    to={`/project/${p.slug}`}
+                    className="font-mono text-xs text-white/35 hover:text-white uppercase tracking-widest transition-colors"
+                  >
+                    Full Case Study →
+                  </Link>
+                )}
+              </div>
 
               {p.caseStudy && (
                 <button
                   onClick={() => setExpanded(!expanded)}
                   className="flex items-center gap-1 font-mono text-[10px] text-white/30 hover:text-white/60 uppercase tracking-widest transition-colors"
                 >
-                  Case study
+                  Details
                   <ChevronDown
                     className={`size-3 transition-transform duration-300 ${expanded ? 'rotate-180' : ''}`}
                   />
