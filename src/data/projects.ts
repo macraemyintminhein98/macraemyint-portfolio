@@ -3,6 +3,7 @@ import type { Project, ProjectCategory } from '@/types';
 // Web project screenshots
 import signprosScreenshot from '@/assets/projects/signpros-screenshot.png';
 import luminoScreenshot from '@/assets/projects/lumino-screenshot.png';
+import mnOrderSyncScreenshot from '@/assets/projects/mn-order-sync-screenshot.png';
 
 // Design work — commercial branding
 import alephCarwash from '@/assets/portfolio/aleph-carwash.png';
@@ -67,7 +68,7 @@ export const projects: Project[] = [
     category: 'web-apps',
     year: '2025',
     slug: 'mn-order-sync',
-    coverImage: signprosScreenshot, // placeholder — internal tool
+    coverImage: mnOrderSyncScreenshot,
     description:
       'Custom order tracking web app for MN Custom Homes. OpenAI Vision OCR extracts order data from email screenshots, Supabase stores it, custom dashboard shows installation status in real time.',
     client: 'MN Custom Homes',
@@ -75,7 +76,7 @@ export const projects: Project[] = [
     images: [
       {
         id: 'mn-1',
-        src: signprosScreenshot,
+        src: mnOrderSyncScreenshot,
         alt: 'MN Order Sync — internal order tracking dashboard',
         aspectRatio: 'landscape',
       },
