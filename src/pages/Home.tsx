@@ -1,28 +1,10 @@
-import { useState, useEffect, Component, Suspense, lazy } from 'react';
-import type { ReactNode } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Github, Linkedin, Twitter, ExternalLink, ArrowRight } from 'lucide-react';
 import { SEOHead } from '@/components/seo/SEOHead';
 import { TiltCard } from '@/components/effects/TiltCard';
 import { ParticleEmbers } from '@/components/effects/ParticleEmbers';
-
-// Lazy-load Spline — large WASM payload, isolate from main bundle
-const SplineScene = lazy(() => import('@splinetool/react-spline'));
-
-// Error boundary so a Spline failure doesn't crash the page
-class SplineErrorBoundary extends Component<
-  { children: ReactNode },
-  { hasError: boolean }
-> {
-  state = { hasError: false };
-  static getDerivedStateFromError() {
-    return { hasError: true };
-  }
-  render() {
-    if (this.state.hasError) return null;
-    return this.props.children;
-  }
-}
+import { InteractiveCube } from '@/components/effects/InteractiveCube';
 
 // Web project screenshots
 import signprosScreenshot from '@/assets/projects/signpros-screenshot.png';
@@ -172,16 +154,13 @@ function Hero() {
         <ParticleEmbers />
       </div>
 
-      {/* Spline 3D — floating element, right side, desktop only */}
-      <div className="absolute right-0 top-0 w-1/2 h-full pointer-events-none hidden lg:block opacity-70">
-        <SplineErrorBoundary>
-          <Suspense fallback={null}>
-            <SplineScene
-              scene="https://prod.spline.design/6Wq1Q7YGyM-iab9i/scene.splinecode"
-              style={{ width: '100%', height: '100%' }}
-            />
-          </Suspense>
-        </SplineErrorBoundary>
+      {/* Interactive 3D cube — drag to rotate, scroll to zoom */}
+      <div className="absolute right-0 top-0 w-1/2 h-full hidden lg:block opacity-90">
+        <InteractiveCube />
+        {/* Hint label */}
+        <div className="absolute bottom-6 right-6 font-mono text-[10px] text-white/20 uppercase tracking-widest pointer-events-none select-none">
+          drag · rotate · zoom
+        </div>
       </div>
 
       {/* TOP ROW */}
