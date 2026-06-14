@@ -123,7 +123,7 @@ const pricingTiers: PricingTier[] = [
       'Mobile-first design',
       'Contact form',
       'SEO basics',
-      '~48 hour turnaround',
+      '~5 day turnaround',
       'Domain & SSL setup',
       'Monthly updates & hosting',
     ],
@@ -225,14 +225,14 @@ const stats = [
   { target: 12, suffix: '+', label: 'Years Design' },
   { target: 3, suffix: '', label: 'Live Products' },
   { target: 2, suffix: '', label: 'Countries' },
-  { target: 48, suffix: 'hr', label: 'Turnaround' },
+  { target: 5, suffix: ' days', label: 'Turnaround' },
 ];
 
 const services = [
   {
     num: '01',
     title: 'Website Design & Build',
-    description: 'Clean, fast single-page sites. ~48 hours. No templates, no page builders.',
+    description: 'Clean, fast single-page sites. ~5 days. No templates, no page builders.',
   },
   {
     num: '02',
@@ -359,7 +359,7 @@ function Hero() {
   return (
     <section
       id="top"
-      className="relative min-h-screen flex flex-col justify-between px-8 lg:px-16 pt-20 pb-8 overflow-hidden"
+      className="relative min-h-screen flex flex-col justify-between px-5 sm:px-8 lg:px-16 pt-20 pb-8 overflow-hidden"
     >
       {/* Particle base layer */}
       <div className="absolute inset-0 pointer-events-none">
@@ -401,7 +401,7 @@ function Hero() {
         <div className="max-w-6xl">
           <h1
             className="font-serif-display italic text-[#F5F0E8] text-left"
-            style={{ fontSize: 'clamp(4rem, 10vw, 11rem)', lineHeight: 0.85, letterSpacing: '-3px' }}
+            style={{ fontSize: 'clamp(2.8rem, 10vw, 11rem)', lineHeight: 0.88, letterSpacing: '-2px' }}
           >
             {heroWords.map((word, i) => (
               <motion.span
@@ -588,7 +588,7 @@ function TestimonialCard({ t, i }: { t: Testimonial; i: number }) {
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, margin: '-80px' }}
       transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1], delay: i * 0.1 }}
-      className="border border-white/[0.08] bg-white/[0.02] p-8 flex flex-col"
+      className="border border-white/[0.08] bg-white/[0.02] p-5 md:p-8 flex flex-col"
     >
       <div className="font-serif-display italic text-primary text-5xl leading-none mb-4 select-none">
         "
@@ -613,7 +613,7 @@ function PricingCard({ tier, i }: { tier: PricingTier; i: number }) {
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, margin: '-80px' }}
       transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1], delay: i * 0.1 }}
-      className={`relative border p-8 flex flex-col ${
+      className={`relative border p-5 md:p-8 flex flex-col ${
         tier.highlighted
           ? 'border-primary/50 bg-primary/[0.05]'
           : 'border-white/[0.08] bg-white/[0.02]'
@@ -866,7 +866,7 @@ export default function Home() {
         <Hero />
 
         {/* ── INTRO ───────────────────────────────────────────────────── */}
-        <section className="py-24 md:py-36 px-8 lg:px-16">
+        <section className="py-16 md:py-32 px-5 sm:px-8 lg:px-16">
           <motion.div {...reveal}>
             <h2
               className="font-serif-display italic text-white"
@@ -875,14 +875,14 @@ export default function Home() {
               Clean sites. Fast builds.<br />Real results.
             </h2>
             <p className="mt-6 text-lg font-light text-white/40 max-w-xl leading-relaxed">
-              Local service businesses in WA get a polished, mobile-first website built in ~48 hours —
+              Local service businesses in WA get a polished, mobile-first website built in ~5 days —
               then managed monthly. No templates. No page builders. Just good design and clean code.
             </p>
           </motion.div>
         </section>
 
         {/* ── WEB PROJECTS ─────────────────────────────────────────────── */}
-        <section id="projects" className="py-16 md:py-24 px-8 lg:px-16 border-t border-white/[0.07]">
+        <section id="projects" className="py-12 md:py-20 px-5 sm:px-8 lg:px-16 border-t border-white/[0.07]">
           <motion.div {...reveal} className="mb-12">
             <p className="font-mono text-xs text-white/30 uppercase tracking-widest mb-3">
               // WEB PROJECTS
@@ -895,7 +895,7 @@ export default function Home() {
             </h2>
           </motion.div>
 
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
             {webProjects.map((p, i) => (
               <WebProjectCard key={p.name} p={p} i={i} />
             ))}
@@ -944,7 +944,7 @@ export default function Home() {
         </section>
 
         {/* ── PROCESS ──────────────────────────────────────────────────── */}
-        <section className="py-24 md:py-32 px-8 lg:px-16 border-t border-white/[0.07]">
+        <section className="py-16 md:py-24 px-5 sm:px-8 lg:px-16 border-t border-white/[0.07]">
           <motion.div {...reveal} className="mb-16">
             <p className="font-mono text-xs text-white/30 uppercase tracking-widest mb-3">
               // HOW IT WORKS
@@ -957,7 +957,7 @@ export default function Home() {
             </h2>
           </motion.div>
 
-          <div className="grid md:grid-cols-5 gap-0">
+          <div className="grid sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-0">
             {processSteps.map((step, i) => (
               <motion.div
                 key={step.day}
@@ -983,8 +983,8 @@ export default function Home() {
         </section>
 
         {/* ── STATS ────────────────────────────────────────────────────── */}
-        <section className="py-24 px-8 lg:px-16 border-t border-white/[0.07]">
-          <div className="flex flex-wrap justify-between gap-12">
+        <section className="py-16 md:py-24 px-5 sm:px-8 lg:px-16 border-t border-white/[0.07]">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-x-8 gap-y-10">
             {stats.map((s, i) => (
               <AnimatedStat
                 key={s.label}
@@ -998,7 +998,7 @@ export default function Home() {
         </section>
 
         {/* ── TESTIMONIALS ─────────────────────────────────────────────── */}
-        <section className="py-24 md:py-32 px-8 lg:px-16 border-t border-white/[0.07]">
+        <section className="py-16 md:py-24 px-5 sm:px-8 lg:px-16 border-t border-white/[0.07]">
           <motion.div {...reveal} className="mb-12">
             <p className="font-mono text-xs text-white/30 uppercase tracking-widest mb-3">
               // CLIENTS
@@ -1011,7 +1011,7 @@ export default function Home() {
             </h2>
           </motion.div>
 
-          <div className="grid md:grid-cols-3 gap-6">
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
             {testimonials.map((t, i) => (
               <TestimonialCard key={t.name} t={t} i={i} />
             ))}
@@ -1019,7 +1019,7 @@ export default function Home() {
         </section>
 
         {/* ── PRICING ──────────────────────────────────────────────────── */}
-        <section id="pricing" className="py-24 md:py-32 px-8 lg:px-16 border-t border-white/[0.07]">
+        <section id="pricing" className="py-16 md:py-24 px-5 sm:px-8 lg:px-16 border-t border-white/[0.07]">
           <motion.div {...reveal} className="mb-16">
             <p className="font-mono text-xs text-white/30 uppercase tracking-widest mb-3">
               // PRICING
@@ -1035,7 +1035,7 @@ export default function Home() {
             </p>
           </motion.div>
 
-          <div className="grid md:grid-cols-3 gap-6">
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
             {pricingTiers.map((tier, i) => (
               <PricingCard key={tier.name} tier={tier} i={i} />
             ))}
@@ -1050,7 +1050,7 @@ export default function Home() {
         </section>
 
         {/* ── DESIGN BACKGROUND ────────────────────────────────────────── */}
-        <section id="design" className="py-24 px-8 lg:px-16 border-t border-white/[0.07]">
+        <section id="design" className="py-16 md:py-24 px-5 sm:px-8 lg:px-16 border-t border-white/[0.07]">
           <motion.div {...reveal} className="mb-12">
             <p className="font-mono text-xs text-white/30 uppercase tracking-widest mb-3">
               // DESIGN BACKGROUND
@@ -1094,7 +1094,7 @@ export default function Home() {
         </section>
 
         {/* ── SERVICES ─────────────────────────────────────────────────── */}
-        <section id="services" className="py-24 px-8 lg:px-16 bg-black border-t border-white/[0.07]">
+        <section id="services" className="py-16 md:py-24 px-5 sm:px-8 lg:px-16 bg-black border-t border-white/[0.07]">
           <div className="grid lg:grid-cols-2 gap-16 items-start">
             <motion.div {...reveal}>
               <h2
@@ -1130,7 +1130,7 @@ export default function Home() {
         </section>
 
         {/* ── CONTACT ──────────────────────────────────────────────────── */}
-        <section id="contact" className="py-32 px-8 lg:px-16 border-t border-white/[0.07]">
+        <section id="contact" className="py-20 md:py-32 px-5 sm:px-8 lg:px-16 border-t border-white/[0.07]">
           <div className="grid lg:grid-cols-2 gap-16 items-start">
             <motion.div {...reveal}>
               <h2
