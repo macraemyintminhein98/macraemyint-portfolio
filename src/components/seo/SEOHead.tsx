@@ -44,14 +44,17 @@ export function SEOHead({
     updateMetaTag('og:description', fullDescription, true);
     updateMetaTag('og:type', type, true);
     updateMetaTag('og:url', fullUrl, true);
-    if (image) updateMetaTag('og:image', image, true);
+    const absoluteImage = image
+      ? image.startsWith('http') ? image : `${baseUrl}${image}`
+      : null;
+    if (absoluteImage) updateMetaTag('og:image', absoluteImage, true);
     updateMetaTag('og:site_name', profileInfo.name, true);
     updateMetaTag('twitter:card', 'summary_large_image');
     updateMetaTag('twitter:title', fullTitle);
     updateMetaTag('twitter:description', fullDescription);
-    if (image) updateMetaTag('twitter:image', image);
+    if (absoluteImage) updateMetaTag('twitter:image', absoluteImage);
     updateMetaTag('author', profileInfo.name);
-    updateMetaTag('keywords', 'car illustration, JDM art, automotive illustration, custom car art, Macrae Myint, manga car, anime car illustration');
+    updateMetaTag('keywords', 'web designer seattle, web developer redmond wa, local business websites, small business website design, Macrae Myint, web design washington state');
 
     // Self-referencing canonical link per route
     let canonical = document.querySelector('link[rel="canonical"]') as HTMLLinkElement | null;

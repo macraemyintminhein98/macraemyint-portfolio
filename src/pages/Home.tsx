@@ -857,6 +857,7 @@ export default function Home() {
       <SEOHead
         title="Web Designer & Developer — Local Business Websites"
         description="Macrae Myint — web designer and developer building clean, fast websites for local businesses. 12+ years design experience. Based in Seattle, WA."
+        image="/og-image.png"
       />
 
       <div className="grain-overlay" aria-hidden="true" />
