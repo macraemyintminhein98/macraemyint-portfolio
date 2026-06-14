@@ -9,6 +9,7 @@ import { InteractiveCube } from '@/components/effects/InteractiveCube';
 // Web project screenshots
 import signprosScreenshot from '@/assets/projects/signpros-screenshot.png';
 import luminoScreenshot from '@/assets/projects/lumino-screenshot.png';
+import mnOrderSyncScreenshot from '@/assets/projects/mn-order-sync-screenshot.png';
 
 // Design section images
 import alephCarwash from '@/assets/portfolio/aleph-carwash.png';
@@ -64,6 +65,7 @@ const webProjects: WebProject[] = [
     stack: ['Next.js', 'Supabase', 'OpenAI Vision'],
     description:
       'Custom order tracking for MN Custom Homes. OpenAI OCR extracts job data from email screenshots; Supabase stores it; dashboard shows sign installation status in real time.',
+    screenshot: mnOrderSyncScreenshot,
   },
 ];
 
@@ -155,7 +157,7 @@ function Hero() {
       </div>
 
       {/* Interactive 3D cube — drag to rotate, scroll to zoom */}
-      <div className="absolute right-0 top-0 w-1/2 h-full hidden lg:block opacity-90">
+      <div className="absolute right-0 top-0 w-1/2 h-full hidden lg:block opacity-90 z-10">
         <InteractiveCube />
         {/* Hint label */}
         <div className="absolute bottom-6 right-6 font-mono text-[10px] text-white/20 uppercase tracking-widest pointer-events-none select-none">
