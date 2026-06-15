@@ -460,6 +460,14 @@ function Hero() {
               See My Work →
             </a>
             <a
+              href="https://calendly.com/macrae-macraemyint/30min"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="px-6 py-3 border border-primary/50 text-primary font-mono text-xs uppercase tracking-widest hover:bg-primary/10 transition-colors"
+            >
+              Book a 30-min Call ↗
+            </a>
+            <a
               href="#contact"
               className="px-6 py-3 border border-white/20 text-white/70 font-mono text-xs uppercase tracking-widest hover:border-white/50 hover:text-white transition-colors"
             >
@@ -859,6 +867,14 @@ function StickyBar() {
             </p>
             <div className="flex items-center gap-3 ml-auto">
               <a
+                href="https://calendly.com/macrae-macraemyint/30min"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="px-5 py-2 border border-primary/40 text-primary font-mono text-xs uppercase tracking-widest hover:bg-primary/10 transition-colors whitespace-nowrap hidden sm:block"
+              >
+                Book a call ↗
+              </a>
+              <a
                 href="#contact"
                 onClick={() => setDismissed(true)}
                 className="px-5 py-2 bg-primary text-primary-foreground font-mono text-xs uppercase tracking-widest hover:bg-primary/90 transition-colors whitespace-nowrap"
@@ -1176,13 +1192,22 @@ export default function Home() {
                 I'll reply within 24 hours.
               </p>
 
-              <div className="mt-8">
+              <div className="mt-8 space-y-3">
                 <a
                   href="mailto:macrae@macraemyint.com"
                   className="flex items-center gap-2 font-mono text-sm text-white/40 hover:text-white transition-colors w-fit"
                 >
                   <ArrowRight className="size-4" />
                   macrae@macraemyint.com
+                </a>
+                <a
+                  href="https://calendly.com/macrae-macraemyint/30min"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-2 font-mono text-sm text-primary/70 hover:text-primary transition-colors w-fit"
+                >
+                  <ArrowRight className="size-4" />
+                  Book a free 30-min intro call ↗
                 </a>
               </div>
 
