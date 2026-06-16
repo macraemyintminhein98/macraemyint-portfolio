@@ -18,6 +18,7 @@ export function Header() {
 
   const navLinks = [
     { label: 'Work', to: '/portfolio' },
+    { label: 'Services', to: '/services' },
     { label: 'About', to: '/about' },
   ];
 
