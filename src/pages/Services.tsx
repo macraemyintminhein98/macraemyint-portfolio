@@ -240,7 +240,52 @@ export default function Services() {
           </motion.div>
         </section>
 
-        {/* ── CTA ── */}
+
+        {/* ── FAQ ── */}
+        <section className="py-20 px-8 lg:px-16 border-b border-white/[0.07]">
+          <motion.div {...reveal} className="max-w-4xl mx-auto">
+            <p className="font-mono text-xs text-white/30 uppercase tracking-widest mb-3">FAQ</p>
+            <h2 className="font-serif-display italic text-white mb-10" style={{ fontSize: 'clamp(1.8rem, 3vw, 2.8rem)', letterSpacing: '-1.5px' }}>
+              Common questions
+            </h2>
+
+            <div className="space-y-0 divide-y divide-white/[0.06]">
+              {[
+                {
+                  q: 'How long does a website take?',
+                  a: 'Starter single-page sites are typically delivered within 48 hours of deposit. Standard multi-page sites take 5–7 business days. Custom builds are scoped per project — I'll give you a clear timeline upfront.'
+                },
+                {
+                  q: 'How does payment work?',
+                  a: '50% deposit to start, 50% on launch day. I accept Zelle, Venmo, PayPal, and bank transfer. No surprises — the price you see is the price you pay.'
+                },
+                {
+                  q: 'What if I need changes after launch?',
+                  a: 'Every package includes 3 rounds of revisions before launch. After launch, changes are covered by the $50/mo maintenance plan — or billed at $75/hr if you prefer one-off edits.'
+                },
+                {
+                  q: 'Do you handle hosting and domain setup?',
+                  a: 'Yes. I set up and configure everything — hosting, domain connection, SSL certificate, and DNS. You keep ownership of your domain and hosting account. I just handle the technical setup.'
+                },
+                {
+                  q: 'I already have a website. Can you redesign it?',
+                  a: 'Absolutely — redesigns are most of what I do. I rebuild your existing site as a clean, fast, modern version. Same domain, same business, completely new look and performance.'
+                },
+                {
+                  q: 'Do you work with businesses outside of Washington?',
+                  a: 'Yes. I work remotely with clients across the US and internationally. Everything is handled online — video call, email, and shared Google Drive for content and feedback.'
+                },
+              ].map((item, i) => (
+                <div key={i} className="py-6">
+                  <h4 className="font-sans-body font-semibold text-white mb-2.5 text-sm md:text-base">{item.q}</h4>
+                  <p className="text-sm text-white/40 leading-relaxed font-light">{item.a}</p>
+                </div>
+              ))}
+            </div>
+          </motion.div>
+        </section>
+
+        {/* ── CTA ── */
         <section className="py-24 md:py-32 px-8 lg:px-16">
           <motion.div {...reveal} className="max-w-3xl mx-auto text-center">
             <h2

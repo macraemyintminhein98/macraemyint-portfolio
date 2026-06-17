@@ -31,7 +31,7 @@ export default function About() {
               className="font-serif-display italic text-white"
               style={{ fontSize: 'clamp(3rem, 7vw, 7rem)', letterSpacing: '-3px', lineHeight: 0.9 }}
             >
-              About Me
+              12 years of design.<br />Built for the web.
             </h1>
             <p className="mt-6 text-lg font-light text-white/40 max-w-lg leading-relaxed">
               {profileInfo.tagline}
@@ -232,6 +232,39 @@ export default function About() {
               ))}
             </div>
           </div>
+        </section>
+        {/* CTA */}
+        <section className="py-20 md:py-28 px-8 lg:px-16 border-t border-white/[0.07]">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.8 }}
+            className="max-w-4xl mx-auto flex flex-col md:flex-row md:items-center md:justify-between gap-8"
+          >
+            <div>
+              <h2 className="font-serif-display italic text-white mb-2" style={{ fontSize: 'clamp(1.8rem, 3.5vw, 3rem)', letterSpacing: '-1.5px' }}>
+                Let's work together.
+              </h2>
+              <p className="text-white/40 text-base font-light">See pricing, or book a free 30-min call.</p>
+            </div>
+            <div className="flex flex-wrap gap-4 flex-shrink-0">
+              <a
+                href="/services"
+                className="px-6 py-3 bg-amber-400 text-black font-mono text-xs uppercase tracking-widest hover:bg-amber-300 transition-colors"
+              >
+                View Services →
+              </a>
+              <a
+                href="https://calendly.com/macrae-macraemyint/30min"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="px-6 py-3 border border-white/20 text-white/70 font-mono text-xs uppercase tracking-widest hover:border-white/50 hover:text-white transition-colors"
+              >
+                Book a Call ↗
+              </a>
+            </div>
+          </motion.div>
         </section>
       </div>
     </>
