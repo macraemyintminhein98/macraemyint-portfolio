@@ -468,3 +468,7 @@
     cursor: none !important;
   }
 }
+
+/* utility: hide scrollbars on horizontal chip rows (solar system HUD) */
+.no-scrollbar { scrollbar-width: none; -ms-overflow-style: none; }
+.no-scrollbar::-webkit-scrollbar { display: none; }

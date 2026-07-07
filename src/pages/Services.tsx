@@ -253,7 +253,7 @@ export default function Services() {
               {[
                 {
                   q: 'How long does a website take?',
-                  a: 'Starter single-page sites are typically delivered within 48 hours of deposit. Standard multi-page sites take 5–7 business days. Custom builds are scoped per project — I'll give you a clear timeline upfront.'
+                  a: "Starter single-page sites are typically delivered within 48 hours of deposit. Standard multi-page sites take 5–7 business days. Custom builds are scoped per project — I'll give you a clear timeline upfront."
                 },
                 {
                   q: 'How does payment work?',
@@ -285,7 +285,7 @@ export default function Services() {
           </motion.div>
         </section>
 
-        {/* ── CTA ── */
+        {/* ── CTA ── */}
         <section className="py-24 md:py-32 px-8 lg:px-16">
           <motion.div {...reveal} className="max-w-3xl mx-auto text-center">
             <h2

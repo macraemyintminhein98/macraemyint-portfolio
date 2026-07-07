@@ -4,6 +4,7 @@ import type { Project, ProjectCategory } from '@/types'; // CaseStudy used via P
 import signprosScreenshot from '@/assets/projects/signpros-screenshot.png';
 import luminoScreenshot from '@/assets/projects/lumino-screenshot.png';
 import mnOrderSyncScreenshot from '@/assets/projects/mn-order-sync-screenshot.png';
+import solarSystemScreenshot from '@/assets/projects/solar-system-screenshot.png';
 
 // Design work — commercial branding
 import alephCarwash from '@/assets/portfolio/aleph-carwash.png';
@@ -98,6 +99,37 @@ export const projects: Project[] = [
         src: luminoScreenshot,
         alt: 'CLC Construction — coming soon',
         aspectRatio: 'landscape',
+      },
+    ],
+  },
+  {
+    id: 'solar-system-simulator',
+    title: 'Solar System — Live Orbital Sim',
+    category: 'web-apps',
+    year: '2026',
+    slug: 'solar-system-simulator',
+    coverImage: solarSystemScreenshot,
+    description:
+      'Real-time 3D ephemeris of the solar system. Kepler\'s equation solved every frame against JPL J2000 orbital elements — the planets on screen sit where they actually are right now. GLSL sun shader, procedural planet textures (zero image assets), 1,300-asteroid instanced belt, cinematic follow camera.',
+    client: 'Lab — personal build',
+    tools: 'Three.js · WebGL · GLSL · React · TypeScript',
+    liveUrl: 'https://macraemyint.com/solar-system',
+    status: 'Live' as const,
+    stack: ['Three.js', 'WebGL', 'GLSL', 'React', 'TypeScript'],
+    caseStudy: {
+      problem:
+        'Portfolio sites claim "I can build anything" but rarely prove it. I wanted a single page that demonstrates graphics programming, real math, and product polish at once — something a visitor can feel in five seconds.',
+      solution:
+        "Built a live orbital simulator, not an animation: a Newton–Raphson Kepler solver runs against real JPL J2000 orbital elements every frame, so eccentricity, inclination and planetary positions match the actual sky for any date from 1800–2050. Every surface — gas-giant bands, Earth's continents and cloud layer, Saturn's rings, crater fields — is procedurally generated from seeded noise at load, so the page ships zero image assets. HDR bloom pipeline, custom GLSL sun shader, instanced 1,300-rock asteroid belt, click-to-focus cinematic camera, and full time control from real-time to a year per second.",
+      result:
+        'A working scientific instrument inside a portfolio: open it today and the planets are where they actually are today. It doubles as the fastest possible proof of what "vibe coding" with an AI-assisted workflow can ship — physics, shaders, and UI polish in one self-contained page.',
+    },
+    images: [
+      {
+        id: 'solar-1',
+        src: solarSystemScreenshot,
+        alt: 'Solar System live orbital simulator — real-time Keplerian ephemeris',
+        aspectRatio: 'landscape' as const,
       },
     ],
   },

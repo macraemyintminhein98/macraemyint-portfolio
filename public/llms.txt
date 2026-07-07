@@ -6,5 +6,6 @@
 
 - [Home](/): Designer, developer, and builder portfolio with hero, about, projects, services, design work, and contact.
 - [Portfolio](/portfolio): Full gallery of design and illustration projects, filterable by category.
+- [Solar System Lab](/solar-system): Real-time 3D orbital simulator — Kepler solver against JPL J2000 elements, procedural planet textures, GLSL sun shader. Built with Three.js/WebGL.
 - [About](/about): Background, experience, and skills.
 - [Contact](/contact): Ways to get in touch and commission work.
