@@ -7,7 +7,8 @@
  * simulated date. Every surface is procedurally generated — zero image assets.
  */
 
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { useEffect, useRef, useState, useCallback, type CSSProperties } from 'react';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Play, Pause, Rewind, FastForward, RotateCcw } from 'lucide-react';
@@ -120,7 +121,7 @@ export interface SolarEngine {
   dispose: () => void;
 }
 
-const HOME_CAM = new THREE.Vector3(0, 88, 196);
+const HOME_CAM = new THREE.Vector3(0, 118, 268);
 
 function createSolarEngine(
   mount: HTMLDivElement,
@@ -131,7 +132,7 @@ function createSolarEngine(
   let height = mount.clientHeight;
 
   const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, window.innerWidth < 768 ? 1.75 : 2));
   renderer.setSize(width, height);
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   renderer.toneMappingExposure = 1.0;
@@ -149,14 +150,14 @@ function createSolarEngine(
   const scene = new THREE.Scene();
   scene.background = new THREE.Color(0x000000);
 
-  const camera = new THREE.PerspectiveCamera(42, width / height, 0.1, 6000);
+  const camera = new THREE.PerspectiveCamera(42, width / height, 0.1, 9000);
   camera.position.copy(HOME_CAM);
 
   const controls = new OrbitControls(camera, renderer.domElement);
   controls.enableDamping = true;
   controls.dampingFactor = 0.06;
   controls.minDistance = 4;
-  controls.maxDistance = 1200;
+  controls.maxDistance = 1800;
   controls.zoomSpeed = 0.9;
 
   // HDR pipeline → bloom threshold above 1.0 so only the Sun's shader blooms
@@ -611,12 +612,15 @@ function createSolarEngine(
   let homeFlight: { t: number; dur: number; fromCam: THREE.Vector3; fromTarget: THREE.Vector3 } | null = null;
 
   function refreshLabels() {
+    const selParent = moonParent.get(selectedId ?? '');
     for (const [id, rec] of labelEls) {
       let visible = showLabels;
       if (rec.group.startsWith('moons:')) {
         const parent = rec.group.slice(6);
-        visible =
-          showLabels && (selectedId === parent || selectedId === id || moonParent.get(selectedId ?? '') === parent);
+        visible = showLabels && (selectedId === parent || selectedId === id || selParent === parent);
+      } else if (selectedId) {
+        // focused: only the selected body (or the parent of a selected moon) keeps its label
+        visible = showLabels && (id === selectedId || id === selParent);
       }
       rec.el.style.display = visible ? '' : 'none';
       rec.el.style.color = id === selectedId ? '#c8a94c' : 'rgba(255,255,255,0.55)';
@@ -624,10 +628,19 @@ function createSolarEngine(
   }
 
   function refreshOrbits() {
+    const selParent = moonParent.get(selectedId ?? '');
     for (const o of orbitLines) {
       o.line.visible = showOrbits;
       const mat = o.line.material as THREE.LineBasicMaterial;
-      mat.opacity = o.id === selectedId ? Math.min(0.9, o.baseOpacity * 2.9) : o.baseOpacity;
+      if (!selectedId) {
+        mat.opacity = o.baseOpacity;
+      } else if (o.id === selectedId) {
+        mat.opacity = Math.min(0.9, o.baseOpacity * 2.9);
+      } else if (moonParent.get(o.id) === selectedId || o.id === selParent || moonParent.get(o.id) === selParent) {
+        mat.opacity = o.baseOpacity; // sibling moons of the focused system stay readable
+      } else {
+        mat.opacity = 0.06; // everything else recedes
+      }
     }
   }
 
@@ -897,10 +910,21 @@ function createSolarEngine(
 }
 
 /* ═════════════════════════ React component / HUD ════════════════════════ */
+/* Geometry (position/size) is set with inline styles — deterministic across
+   zoom levels, motion transforms, and utility-class edge cases. Tailwind is
+   used only for typography and color. */
 
 const RAIL_BODIES = [{ id: 'sun', short: 'SUN', name: SUN.name }].concat(
   PLANETS.map((p) => ({ id: p.id, short: p.short, name: p.name }))
 );
+
+const PANEL_BG: CSSProperties = {
+  background: 'rgba(9, 9, 11, 0.88)',
+  backdropFilter: 'blur(14px)',
+  WebkitBackdropFilter: 'blur(14px)',
+  border: '1px solid rgba(255,255,255,0.12)',
+  borderRadius: '8px',
+};
 
 function HudToggle({ label, on, onClick }: { label: string; on: boolean; onClick: () => void }) {
   return (
@@ -922,6 +946,7 @@ export default function SolarSystem() {
   const dateRef = useRef<HTMLSpanElement>(null);
   const deltaRef = useRef<HTMLSpanElement>(null);
   const pausedRef = useRef(false);
+  const isMobile = useIsMobile();
 
   const [ready, setReady] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -953,10 +978,7 @@ export default function SolarSystem() {
           onReady: () => setReady(true),
           onTogglePause: () => setPaused((p) => !p),
         },
-        {
-          paused: pausedRef.current,
-          speed: SPEEDS[DEFAULT_SPEED_IDX].v,
-        }
+        { paused: pausedRef.current, speed: SPEEDS[DEFAULT_SPEED_IDX].v }
       );
       engineRef.current = engine;
     }, 30);
@@ -967,27 +989,33 @@ export default function SolarSystem() {
     };
   }, []);
 
-  useEffect(() => {
-    engineRef.current?.setPaused(paused);
-  }, [paused]);
-  useEffect(() => {
-    engineRef.current?.setSpeed(SPEEDS[speedIdx].v * dir);
-  }, [speedIdx, dir]);
-  useEffect(() => {
-    engineRef.current?.setOrbits(orbits);
-  }, [orbits]);
-  useEffect(() => {
-    engineRef.current?.setLabels(labels);
-  }, [labels]);
-  useEffect(() => {
-    engineRef.current?.setBelt(belt);
-  }, [belt]);
+  useEffect(() => { engineRef.current?.setPaused(paused); }, [paused]);
+  useEffect(() => { engineRef.current?.setSpeed(SPEEDS[speedIdx].v * dir); }, [speedIdx, dir]);
+  useEffect(() => { engineRef.current?.setOrbits(orbits); }, [orbits]);
+  useEffect(() => { engineRef.current?.setLabels(labels); }, [labels]);
+  useEffect(() => { engineRef.current?.setBelt(belt); }, [belt]);
 
   const selectBody = useCallback((id: string | null) => {
     engineRef.current?.select(id);
   }, []);
 
   const info = selectedId ? bodyInfo(selectedId) : null;
+
+  /* deterministic HUD geometry */
+  const panelStyle: CSSProperties = isMobile
+    ? { ...PANEL_BG, position: 'absolute', left: 10, right: 10, bottom: 118, maxHeight: '42%', zIndex: 30, overflowY: 'auto', padding: 16 }
+    : { ...PANEL_BG, position: 'absolute', right: 24, top: 88, width: 300, maxHeight: 'calc(100% - 150px)', zIndex: 30, overflowY: 'auto', padding: 20 };
+
+  const barStyle: CSSProperties = {
+    ...PANEL_BG,
+    position: 'absolute',
+    bottom: isMobile ? 10 : 20,
+    left: '50%',
+    transform: 'translateX(-50%)',
+    zIndex: 20,
+    maxWidth: '96vw',
+    padding: isMobile ? '6px 10px' : '8px 16px',
+  };
 
   return (
     <>
@@ -996,8 +1024,8 @@ export default function SolarSystem() {
         description="A real-time 3D ephemeris of the solar system. Kepler's equation solved every frame against JPL J2000 orbital elements — planets shown where they actually are right now. Built with Three.js, WebGL and GLSL; every surface procedurally generated."
       />
 
-      <div className="relative w-full overflow-hidden bg-black h-[calc(100dvh-4rem)]">
-        <div ref={mountRef} className="absolute inset-0" />
+      <div className="relative w-full overflow-hidden bg-black" style={{ height: 'calc(100dvh - 4rem)' }}>
+        <div ref={mountRef} className="absolute inset-0" style={{ zIndex: 0 }} />
 
         {/* boot veil */}
         <AnimatePresence>
@@ -1005,176 +1033,231 @@ export default function SolarSystem() {
             <motion.div
               key="boot"
               exit={{ opacity: 0, transition: { duration: 0.8 } }}
-              className="absolute inset-0 z-20 bg-black flex flex-col items-center justify-center gap-4"
+              className="absolute inset-0 bg-black flex flex-col items-center justify-center gap-4"
+              style={{ zIndex: 50 }}
             >
               <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
               <p className="font-mono text-[11px] tracking-[0.35em] text-white/50">INITIALIZING EPHEMERIS</p>
-              <p className="font-mono text-[9px] tracking-[0.3em] text-white/25">
+              <p className="font-mono text-[9px] tracking-[0.3em] text-white/25 text-center px-6">
                 SOLVING KEPLER · GENERATING WORLDS · J2000 ELEMENTS
               </p>
             </motion.div>
           )}
         </AnimatePresence>
 
-        {/* header block */}
-        <div className="absolute top-4 left-5 md:top-6 md:left-8 z-10 pointer-events-none">
-          <Link
-            to="/portfolio"
-            className="pointer-events-auto font-mono text-[10px] tracking-[0.25em] text-white/35 hover:text-primary transition-colors"
+        {/* header block — hidden on mobile while the info sheet is open */}
+        {!(isMobile && info) && (
+          <div style={{ position: 'absolute', top: 14, left: isMobile ? 16 : 32, zIndex: 10, pointerEvents: 'none' }}>
+            <Link
+              to="/portfolio"
+              style={{ pointerEvents: 'auto' }}
+              className="font-mono text-[10px] tracking-[0.25em] text-white/35 hover:text-primary transition-colors"
+            >
+              ← BACK TO WORK
+            </Link>
+            <p className="mt-2 font-mono text-[10px] tracking-[0.35em] text-primary">LAB — 001</p>
+            <h1 className="font-serif-display italic text-2xl md:text-4xl text-foreground leading-tight">
+              Solar System
+            </h1>
+            {!isMobile && (
+              <p className="mt-1 font-mono text-[10px] tracking-[0.22em] text-white/35">
+                REAL-TIME KEPLERIAN EPHEMERIS · JPL J2000 ELEMENTS
+              </p>
+            )}
+          </div>
+        )}
+
+        {/* body picker — vertical rail on desktop, chip row on mobile */}
+        {isMobile ? (
+          <div
+            style={{
+              position: 'absolute',
+              left: 0,
+              right: 0,
+              bottom: 70,
+              zIndex: 20,
+              display: 'flex',
+              gap: 8,
+              overflowX: 'auto',
+              padding: '0 12px',
+            }}
+            className="no-scrollbar"
           >
-            ← BACK TO WORK
-          </Link>
-          <p className="mt-3 font-mono text-[10px] tracking-[0.35em] text-primary">LAB — 001</p>
-          <h1 className="font-serif-display italic text-3xl md:text-4xl text-foreground leading-tight">
-            Solar System
-          </h1>
-          <p className="mt-1 font-mono text-[9px] md:text-[10px] tracking-[0.22em] text-white/35 max-w-[260px] md:max-w-none">
-            REAL-TIME KEPLERIAN EPHEMERIS · JPL J2000 ELEMENTS
-          </p>
-        </div>
+            {RAIL_BODIES.map((b) => (
+              <button
+                key={b.id}
+                onClick={() => selectBody(selectedId === b.id ? null : b.id)}
+                style={{ ...PANEL_BG, flexShrink: 0, borderRadius: 999, padding: '5px 12px' }}
+                className={`font-mono text-[10px] tracking-[0.2em] transition-colors ${
+                  selectedId === b.id ? 'text-primary' : 'text-white/55'
+                }`}
+              >
+                {b.short}
+              </button>
+            ))}
+          </div>
+        ) : (
+          <div
+            style={{
+              position: 'absolute',
+              left: 32,
+              top: '50%',
+              transform: 'translateY(-50%)',
+              zIndex: 10,
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 2,
+            }}
+          >
+            {RAIL_BODIES.map((b) => (
+              <button
+                key={b.id}
+                onClick={() => selectBody(selectedId === b.id ? null : b.id)}
+                title={b.name}
+                className={`font-mono text-[11px] tracking-[0.25em] text-left px-3 py-1.5 border-l transition-colors ${
+                  selectedId === b.id
+                    ? 'text-primary border-primary'
+                    : 'text-white/35 border-white/10 hover:text-white hover:border-white/40'
+                }`}
+              >
+                {b.short}
+              </button>
+            ))}
+          </div>
+        )}
 
-        {/* desktop body rail */}
-        <div className="hidden md:flex flex-col gap-0.5 absolute left-8 top-1/2 -translate-y-1/2 z-10">
-          {RAIL_BODIES.map((b) => (
-            <button
-              key={b.id}
-              onClick={() => selectBody(b.id)}
-              title={b.name}
-              className={`font-mono text-[11px] tracking-[0.25em] text-left px-3 py-1.5 border-l transition-colors ${
-                selectedId === b.id
-                  ? 'text-primary border-primary'
-                  : 'text-white/35 border-white/10 hover:text-white hover:border-white/40'
-              }`}
-            >
-              {b.short}
-            </button>
-          ))}
-        </div>
-
-        {/* mobile body chips */}
-        <div className="md:hidden absolute bottom-[6.2rem] inset-x-0 z-10 px-4 flex gap-2 overflow-x-auto no-scrollbar">
-          {RAIL_BODIES.map((b) => (
-            <button
-              key={b.id}
-              onClick={() => selectBody(b.id)}
-              className={`shrink-0 liquid-glass rounded-full px-3 py-1 font-mono text-[10px] tracking-[0.2em] border transition-colors ${
-                selectedId === b.id ? 'text-primary border-primary/60' : 'text-white/50 border-white/10'
-              }`}
-            >
-              {b.short}
-            </button>
-          ))}
-        </div>
-
-        {/* info panel */}
+        {/* info panel — right column on desktop, bottom sheet on mobile */}
         <AnimatePresence>
           {info && (
             <motion.aside
               key={selectedId}
-              initial={{ opacity: 0, x: 32 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: 32 }}
-              transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
-              className="absolute z-10 liquid-glass border border-white/10 rounded-lg p-5 overflow-y-auto
-                         right-3 left-3 bottom-[9.6rem] max-h-[36vh]
-                         md:left-auto md:bottom-auto md:right-8 md:top-24 md:w-[300px] md:max-h-[calc(100%-9rem)]"
+              initial={{ opacity: 0, y: isMobile ? 24 : 0 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: isMobile ? 24 : 0 }}
+              transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
+              style={panelStyle}
             >
-              <div className="flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full" style={{ backgroundColor: info.color }} />
-                <p className="font-mono text-[9px] tracking-[0.3em] text-white/40 uppercase">{info.type}</p>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2 min-w-0">
+                  <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: info.color }} />
+                  <p className="font-mono text-[9px] tracking-[0.3em] text-white/40 uppercase truncate">{info.type}</p>
+                </div>
+                <button
+                  onClick={() => selectBody(null)}
+                  aria-label="Close"
+                  className="font-mono text-white/40 hover:text-primary transition-colors text-sm leading-none px-1"
+                >
+                  ✕
+                </button>
               </div>
-              <h2 className="font-serif-display text-4xl text-foreground mt-2 leading-none">{info.name}</h2>
-              <div className="border-t border-white/10 my-4" />
-              <dl className="space-y-2">
+              <h2 className="font-serif-display text-3xl md:text-4xl text-foreground mt-2 leading-none">{info.name}</h2>
+              <div className="border-t border-white/10 my-3 md:my-4" />
+              <dl className={isMobile ? 'grid grid-cols-2 gap-x-6 gap-y-1.5' : 'space-y-2'}>
                 {info.rows.map(([k, v]) => (
                   <div key={k} className="flex items-baseline justify-between gap-3">
-                    <dt className="font-mono text-[9px] tracking-[0.2em] text-white/40 uppercase">{k}</dt>
-                    <dd className="font-mono text-xs text-foreground text-right">{v}</dd>
+                    <dt className="font-mono text-[9px] tracking-[0.15em] text-white/40 uppercase">{k}</dt>
+                    <dd className="font-mono text-[11px] md:text-xs text-foreground text-right whitespace-nowrap">{v}</dd>
                   </div>
                 ))}
               </dl>
-              <p className="font-sans-body text-sm text-white/70 leading-relaxed mt-4">{info.fact}</p>
-              <button
-                onClick={() => selectBody(null)}
-                className="mt-5 w-full font-mono text-[10px] tracking-[0.25em] text-white/50 border border-white/15 rounded px-3 py-2 hover:border-primary hover:text-primary transition-colors"
-              >
-                RELEASE FOCUS — ESC
-              </button>
+              <p className="font-sans-body text-[13px] md:text-sm text-white/70 leading-relaxed mt-3 md:mt-4">
+                {info.fact}
+              </p>
+              {!isMobile && (
+                <button
+                  onClick={() => selectBody(null)}
+                  className="mt-5 w-full font-mono text-[10px] tracking-[0.25em] text-white/50 border border-white/15 rounded px-3 py-2 hover:border-primary hover:text-primary transition-colors"
+                >
+                  RELEASE FOCUS — ESC
+                </button>
+              )}
             </motion.aside>
           )}
         </AnimatePresence>
 
         {/* control bar */}
-        <div className="absolute bottom-3 md:bottom-5 left-1/2 -translate-x-1/2 z-10 max-w-[94vw]">
-          <div className="liquid-glass border border-white/10 rounded-lg px-3 md:px-4 py-2 flex items-center gap-2 md:gap-3 flex-wrap justify-center">
+        <div style={barStyle}>
+          <div className="flex items-center gap-1.5 md:gap-3 flex-nowrap">
             <button
               onClick={() => setSpeedIdx((i) => Math.max(0, i - 1))}
               aria-label="Slower"
-              className="p-1.5 rounded text-white/60 hover:text-primary hover:bg-white/5 transition-colors"
+              className="p-1.5 rounded text-white/60 hover:text-primary transition-colors"
             >
               <Rewind size={14} />
             </button>
             <button
               onClick={() => setPaused((p) => !p)}
               aria-label={paused ? 'Play' : 'Pause'}
-              className="p-1.5 rounded text-foreground hover:text-primary hover:bg-white/5 transition-colors"
+              className="p-1.5 rounded text-foreground hover:text-primary transition-colors"
             >
               {paused ? <Play size={15} /> : <Pause size={15} />}
             </button>
             <button
               onClick={() => setSpeedIdx((i) => Math.min(SPEEDS.length - 1, i + 1))}
               aria-label="Faster"
-              className="p-1.5 rounded text-white/60 hover:text-primary hover:bg-white/5 transition-colors"
+              className="p-1.5 rounded text-white/60 hover:text-primary transition-colors"
             >
               <FastForward size={14} />
             </button>
-            <button
-              onClick={() => setDir((d) => (d === 1 ? -1 : 1))}
-              aria-pressed={dir === -1}
-              className={`font-mono text-[10px] tracking-[0.2em] px-2 py-1 rounded transition-colors ${
-                dir === -1 ? 'text-primary' : 'text-white/30 hover:text-white/60'
-              }`}
-            >
-              REV
-            </button>
-            <span className="font-mono text-[10px] tracking-[0.2em] text-white/50 min-w-[68px] text-center">
-              {SPEEDS[speedIdx].label}
-            </span>
+            {!isMobile && (
+              <button
+                onClick={() => setDir((d) => (d === 1 ? -1 : 1))}
+                aria-pressed={dir === -1}
+                className={`font-mono text-[10px] tracking-[0.2em] px-2 py-1 rounded transition-colors ${
+                  dir === -1 ? 'text-primary' : 'text-white/30 hover:text-white/60'
+                }`}
+              >
+                REV
+              </button>
+            )}
+            {!isMobile && (
+              <span className="font-mono text-[10px] tracking-[0.2em] text-white/50 text-center" style={{ minWidth: 68 }}>
+                {SPEEDS[speedIdx].label}
+              </span>
+            )}
 
-            <span className="hidden sm:block w-px h-6 bg-white/10" />
+            <span style={{ width: 1, height: 22, background: 'rgba(255,255,255,0.1)' }} />
 
-            <div className="flex flex-col items-center leading-tight">
-              <span ref={dateRef} className="font-mono text-[11px] md:text-xs text-foreground tabular-nums" />
-              <span ref={deltaRef} className="font-mono text-[9px] tracking-[0.2em] text-primary/80" />
+            <div className="flex flex-col items-center leading-tight" style={{ minWidth: isMobile ? 128 : 168 }}>
+              <span ref={dateRef} className="font-mono text-[10px] md:text-xs text-foreground tabular-nums whitespace-nowrap" />
+              <span ref={deltaRef} className="font-mono text-[8px] md:text-[9px] tracking-[0.18em] text-primary/80 whitespace-nowrap" />
             </div>
             <button
               onClick={() => engineRef.current?.resetToday()}
-              className="font-mono text-[10px] tracking-[0.22em] text-white/50 border border-white/15 rounded px-2 py-1 hover:border-primary hover:text-primary transition-colors"
+              className="font-mono text-[9px] md:text-[10px] tracking-[0.2em] text-white/50 border border-white/15 rounded px-2 py-1 hover:border-primary hover:text-primary transition-colors"
             >
               TODAY
             </button>
 
-            <span className="hidden sm:block w-px h-6 bg-white/10" />
-
-            <div className="hidden sm:flex items-center">
-              <HudToggle label="ORBITS" on={orbits} onClick={() => setOrbits((v) => !v)} />
-              <HudToggle label="LABELS" on={labels} onClick={() => setLabels((v) => !v)} />
-              <HudToggle label="BELT" on={belt} onClick={() => setBelt((v) => !v)} />
-            </div>
+            {!isMobile && (
+              <>
+                <span style={{ width: 1, height: 22, background: 'rgba(255,255,255,0.1)' }} />
+                <div className="flex items-center">
+                  <HudToggle label="ORBITS" on={orbits} onClick={() => setOrbits((v) => !v)} />
+                  <HudToggle label="LABELS" on={labels} onClick={() => setLabels((v) => !v)} />
+                  <HudToggle label="BELT" on={belt} onClick={() => setBelt((v) => !v)} />
+                </div>
+              </>
+            )}
             <button
               onClick={() => engineRef.current?.resetView()}
               aria-label="Reset view"
-              className="p-1.5 rounded text-white/60 hover:text-primary hover:bg-white/5 transition-colors"
+              className="p-1.5 rounded text-white/60 hover:text-primary transition-colors"
             >
               <RotateCcw size={13} />
             </button>
           </div>
         </div>
 
-        {/* hint */}
-        <p className="hidden lg:block absolute bottom-6 right-8 z-10 font-mono text-[9px] tracking-[0.25em] text-white/20">
-          DRAG — ORBIT · SCROLL — ZOOM · CLICK — FOCUS · SPACE — PAUSE
-        </p>
+        {/* hint — desktop only */}
+        {!isMobile && (
+          <p
+            style={{ position: 'absolute', bottom: 24, right: 32, zIndex: 10 }}
+            className="font-mono text-[9px] tracking-[0.25em] text-white/20"
+          >
+            DRAG — ORBIT · SCROLL — ZOOM · CLICK — FOCUS · SPACE — PAUSE
+          </p>
+        )}
       </div>
 
       {/* build notes */}
@@ -1194,7 +1277,7 @@ export default function SolarSystem() {
             href="https://github.com/macraemyintminhein98/macraemyint-portfolio"
             target="_blank"
             rel="noopener noreferrer"
-            className="text-white/50 hover:text-primary transition-colors pointer-events-auto"
+            className="text-white/50 hover:text-primary transition-colors"
           >
             VIEW SOURCE →
           </a>

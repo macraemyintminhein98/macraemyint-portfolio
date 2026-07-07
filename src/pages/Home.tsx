@@ -11,6 +11,7 @@ import { InteractiveCube } from '@/components/effects/InteractiveCube';
 import signprosScreenshot from '@/assets/projects/signpros-screenshot.png';
 import luminoScreenshot from '@/assets/projects/lumino-screenshot.png';
 import mnOrderSyncScreenshot from '@/assets/projects/mn-order-sync-screenshot.png';
+import solarSystemCover from '@/assets/projects/solar-system-screenshot.png';
 
 // Design section images
 import alephCarwash from '@/assets/portfolio/aleph-carwash.png';
@@ -1139,6 +1140,49 @@ export default function Home() {
               </motion.div>
             ))}
           </div>
+        </section>
+
+        {/* ── LAB / OFF THE CLOCK ──────────────────────────────────────── */}
+        <section id="lab" className="py-16 md:py-24 px-5 sm:px-8 lg:px-16 border-t border-white/[0.07]">
+          <motion.div {...reveal} className="grid md:grid-cols-2 gap-8 md:gap-14 items-center">
+            <div>
+              <p className="font-mono text-xs text-white/30 uppercase tracking-widest mb-3">
+                // OFF THE CLOCK — LAB 001
+              </p>
+              <h2
+                className="font-serif-display italic text-white"
+                style={{ fontSize: 'clamp(2rem, 4vw, 4rem)', letterSpacing: '-2px', lineHeight: 1 }}
+              >
+                I build things<br />for fun, too.
+              </h2>
+              <p className="mt-4 text-lg font-light text-white/40 max-w-md leading-relaxed">
+                A live solar system simulator running real orbital math in your browser — Kepler's
+                equation solved every frame against JPL data, so the planets on screen are where
+                they actually are right now. Every surface is generated from code. A weekend build,
+                zero image assets.
+              </p>
+              <Link
+                to="/solar-system"
+                className="inline-flex items-center gap-2 mt-8 font-mono text-xs uppercase tracking-widest text-amber-400 hover:text-amber-300 transition-colors group"
+              >
+                Enter the simulator
+                <ArrowRight size={14} className="transition-transform group-hover:translate-x-1" />
+              </Link>
+            </div>
+            <Link to="/solar-system" className="block group relative overflow-hidden border border-white/[0.08]">
+              <img
+                src={solarSystemCover}
+                alt="Solar System — live orbital simulator"
+                loading="lazy"
+                className="w-full h-auto transition-transform duration-700 group-hover:scale-[1.03]"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-5">
+                <span className="font-mono text-[10px] uppercase tracking-widest text-white/80">
+                  Real-time Keplerian ephemeris ↗
+                </span>
+              </div>
+            </Link>
+          </motion.div>
         </section>
 
         {/* ── SERVICES ─────────────────────────────────────────────────── */}

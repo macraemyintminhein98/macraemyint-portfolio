@@ -88,7 +88,7 @@ export interface PlanetDef {
  * then compressed, so ellipse shape and real positions survive. */
 
 export const SUN_RADIUS = 5;
-export const auToScene = (au: number) => 16 * Math.pow(au, 0.7);
+export const auToScene = (au: number) => 18 * Math.pow(au, 0.78);
 export const planetRadius = (km: number) => 0.11 * Math.cbrt(km);
 export const moonRadius = (km: number) => 0.062 * Math.cbrt(km);
 
