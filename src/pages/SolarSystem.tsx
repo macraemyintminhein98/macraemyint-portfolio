@@ -11,7 +11,7 @@ import { useEffect, useRef, useState, useCallback, type CSSProperties } from 're
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Play, Pause, Rewind, FastForward, RotateCcw, Camera, Maximize2, Minimize2, Settings2 } from 'lucide-react';
+import { Play, Pause, Rewind, FastForward, RotateCcw, Camera, Maximize2, Minimize2, Settings2, History } from 'lucide-react';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
@@ -122,6 +122,7 @@ export interface SolarEngine {
   setImagery: (mode: 'photo' | 'code') => void;
   viewPreset: (kind: 'top' | 'tilt' | 'edge') => void;
   setDate: (ms: number) => void;
+  setEra: (yearsFromNow: number) => void;
   snapshot: () => string;
   dispose: () => void;
 }
@@ -186,6 +187,9 @@ function createSolarEngine(
   };
 
   const rayTargets: THREE.Object3D[] = [];
+  let sunMesh!: THREE.Mesh;
+  let glowS1!: THREE.Sprite;
+  let glowS2!: THREE.Sprite;
   const photoSwaps: { id: string; mat: THREE.MeshLambertMaterial; proc: THREE.Texture }[] = [];
   let cloudSwap: { mat: THREE.MeshLambertMaterial; proc: THREE.Texture } | null = null;
   const moonNodes: THREE.Object3D[] = [];
@@ -236,7 +240,11 @@ function createSolarEngine(
   }
 
   /* ── the Sun — animated fbm shader, HDR output for bloom ── */
-  const sunUniforms = { uTime: { value: 0 } };
+  const sunUniforms = {
+    uTime: { value: 0 },
+    uTint: { value: new THREE.Color(1, 1, 1) },
+    uLum: { value: 1.0 },
+  };
   {
     const sunMat = track(
       new THREE.ShaderMaterial({
@@ -254,6 +262,8 @@ function createSolarEngine(
           }`,
         fragmentShader: /* glsl */ `
           uniform float uTime;
+          uniform vec3 uTint;
+          uniform float uLum;
           varying vec3 vPos;
           varying vec3 vNormalV;
           varying vec3 vViewV;
@@ -287,29 +297,117 @@ function createSolarEngine(
             vec3 col = mix(deep, hot, smoothstep(0.25, 0.8, n)) * (1.25 + g * 0.9);
             float rim = pow(1.0 - abs(dot(normalize(vViewV), vNormalV)), 2.2);
             col += vec3(1.0, 0.42, 0.08) * rim * 1.6;
-            gl_FragColor = vec4(col * 1.35, 1.0);
+            gl_FragColor = vec4(col * 1.35 * uTint * uLum, 1.0);
           }`,
       })
     );
     const sunGeo = track(new THREE.SphereGeometry(SUN_RADIUS, 64, 48));
-    const sunMesh = new THREE.Mesh(sunGeo, sunMat);
+    sunMesh = new THREE.Mesh(sunGeo, sunMat);
     sunMesh.userData.bodyId = 'sun';
     scene.add(sunMesh);
     rayTargets.push(sunMesh);
     bodyMap.set('sun', { obj: sunMesh, radius: SUN_RADIUS });
 
     const glow1 = track(buildGlowTexture('rgba(255,214,140,1)', 'rgba(255,120,30,0.28)'));
-    const s1 = new THREE.Sprite(
+    glowS1 = new THREE.Sprite(
       track(new THREE.SpriteMaterial({ map: glow1, blending: THREE.AdditiveBlending, depthWrite: false, transparent: true, opacity: 0.9 }))
     );
-    s1.scale.setScalar(SUN_RADIUS * 6.5);
-    scene.add(s1);
+    glowS1.scale.setScalar(SUN_RADIUS * 6.5);
+    scene.add(glowS1);
     const glow2 = track(buildGlowTexture('rgba(255,240,200,1)', 'rgba(255,170,60,0.35)'));
-    const s2 = new THREE.Sprite(
+    glowS2 = new THREE.Sprite(
       track(new THREE.SpriteMaterial({ map: glow2, blending: THREE.AdditiveBlending, depthWrite: false, transparent: true, opacity: 0.95 }))
     );
-    s2.scale.setScalar(SUN_RADIUS * 3.1);
-    scene.add(s2);
+    glowS2.scale.setScalar(SUN_RADIUS * 3.1);
+    scene.add(glowS2);
+  }
+
+  /* ── deep-time set pieces: pre-solar nebula + protoplanetary disk ── */
+  const nebulaGroup = new THREE.Group();
+  nebulaGroup.visible = false;
+  scene.add(nebulaGroup);
+  {
+    const N = 5200;
+    const pos = new Float32Array(N * 3);
+    const col = new Float32Array(N * 3);
+    const tints: [number, number, number][] = [
+      [0.95, 0.55, 0.3],
+      [0.75, 0.45, 0.7],
+      [0.4, 0.55, 0.95],
+      [0.95, 0.85, 0.6],
+    ];
+    for (let i = 0; i < N; i++) {
+      const r = Math.pow(Math.random(), 0.6) * 250;
+      const th = Math.random() * Math.PI * 2;
+      const y = (Math.random() + Math.random() - 1) * (35 + r * 0.28);
+      pos[i * 3] = Math.cos(th) * r;
+      pos[i * 3 + 1] = y;
+      pos[i * 3 + 2] = Math.sin(th) * r;
+      const t = tints[Math.floor(Math.random() * tints.length)];
+      const b = 0.25 + Math.random() * 0.75;
+      col[i * 3] = t[0] * b;
+      col[i * 3 + 1] = t[1] * b;
+      col[i * 3 + 2] = t[2] * b;
+    }
+    const g = track(new THREE.BufferGeometry());
+    g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+    g.setAttribute('color', new THREE.BufferAttribute(col, 3));
+    const m = track(
+      new THREE.PointsMaterial({
+        size: 3.2,
+        sizeAttenuation: true,
+        map: track(buildStarTexture()),
+        vertexColors: true,
+        transparent: true,
+        opacity: 0.7,
+        depthWrite: false,
+        blending: THREE.AdditiveBlending,
+      })
+    );
+    nebulaGroup.add(new THREE.Points(g, m));
+    const flash = new THREE.Sprite(
+      track(new THREE.SpriteMaterial({ map: track(buildGlowTexture('rgba(255,255,255,1)', 'rgba(255,220,180,0.4)')), blending: THREE.AdditiveBlending, depthWrite: false, transparent: true }))
+    );
+    flash.name = 'flash';
+    flash.scale.setScalar(60);
+    nebulaGroup.add(flash);
+  }
+
+  const diskGroup = new THREE.Group();
+  diskGroup.visible = false;
+  scene.add(diskGroup);
+  {
+    const N = 7000;
+    const pos = new Float32Array(N * 3);
+    const col = new Float32Array(N * 3);
+    for (let i = 0; i < N; i++) {
+      const r = 7 + Math.pow(Math.random(), 0.7) * 170;
+      const th = Math.random() * Math.PI * 2;
+      pos[i * 3] = Math.cos(th) * r;
+      pos[i * 3 + 1] = (Math.random() + Math.random() - 1) * (0.6 + r * 0.012);
+      pos[i * 3 + 2] = Math.sin(th) * r;
+      const warm = 1 - Math.min(1, r / 200);
+      const b = 0.3 + Math.random() * 0.7;
+      col[i * 3] = (0.55 + warm * 0.45) * b;
+      col[i * 3 + 1] = (0.45 + warm * 0.25) * b;
+      col[i * 3 + 2] = (0.4 + warm * 0.05) * b;
+    }
+    const g = track(new THREE.BufferGeometry());
+    g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+    g.setAttribute('color', new THREE.BufferAttribute(col, 3));
+    const m = track(
+      new THREE.PointsMaterial({
+        size: 1.9,
+        sizeAttenuation: true,
+        map: track(buildStarTexture()),
+        vertexColors: true,
+        transparent: true,
+        opacity: 0.85,
+        depthWrite: false,
+        blending: THREE.AdditiveBlending,
+      })
+    );
+    diskGroup.add(new THREE.Points(g, m));
   }
 
   /* ── labels ── */
@@ -600,6 +698,7 @@ function createSolarEngine(
   let showBelt = true;
   let showMoons = true;
   let imageryMode: 'photo' | 'code' = 'photo';
+  let eraPhase: 'cosmic' | 'disk' | 'system' | 'redgiant' | 'whitedwarf' = 'system';
   let selectedId: string | null = null;
   let readySent = false;
   let disposed = false;
@@ -649,7 +748,8 @@ function createSolarEngine(
     const selParent = moonParent.get(selectedId ?? '');
     for (const [id, rec] of labelEls) {
       let visible = showLabels;
-      if (rec.group.startsWith('moons:')) {
+      if (eraPhase === 'cosmic' || eraPhase === 'disk') visible = false;
+      else if (rec.group.startsWith('moons:')) {
         const parent = rec.group.slice(6);
         visible =
           showMoons && showLabels && (selectedId === parent || selectedId === id || selParent === parent);
@@ -664,8 +764,9 @@ function createSolarEngine(
 
   function refreshOrbits() {
     const selParent = moonParent.get(selectedId ?? '');
+    const systemVisible = eraPhase !== 'cosmic' && eraPhase !== 'disk';
     for (const o of orbitLines) {
-      o.line.visible = showOrbits;
+      o.line.visible = showOrbits && systemVisible;
       const mat = o.line.material as THREE.LineBasicMaterial;
       if (!selectedId) {
         mat.opacity = o.baseOpacity;
@@ -968,7 +1069,7 @@ function createSolarEngine(
     },
     setBelt: (on) => {
       showBelt = on;
-      beltGroup.visible = on;
+      beltGroup.visible = on && eraPhase === 'system';
     },
     setMoons: (on) => {
       showMoons = on;
@@ -988,6 +1089,97 @@ function createSolarEngine(
     setDate: (ms) => {
       simDays = (ms - J2000_MS) / DAY_MS;
       emitDate();
+    },
+    setEra: (years) => {
+      const GYR = 1e9;
+      const prevPhase = eraPhase;
+      if (years <= -4.6 * GYR) eraPhase = 'cosmic';
+      else if (years <= -4.52 * GYR) eraPhase = 'disk';
+      else if (years < 5 * GYR) eraPhase = 'system';
+      else if (years < 7.9 * GYR) eraPhase = 'redgiant';
+      else eraPhase = 'whitedwarf';
+
+      const system = eraPhase === 'system' || eraPhase === 'redgiant' || eraPhase === 'whitedwarf';
+      for (const p of planetsRT) p.anchor.visible = system;
+      for (const o of orbitLines) o.line.visible = showOrbits && system;
+      beltGroup.visible = showBelt && eraPhase === 'system';
+      nebulaGroup.visible = eraPhase === 'cosmic';
+      diskGroup.visible = eraPhase === 'disk';
+      sunMesh.visible = eraPhase !== 'cosmic';
+
+      if (eraPhase === 'cosmic') {
+        // 13.8 Gya (flash of the Big Bang) → 4.6 Gya (cloud condensing)
+        const c = Math.min(1, Math.max(0, (years + 13.8 * GYR) / (9.2 * GYR)));
+        nebulaGroup.scale.setScalar(2.4 - c * 2.0);
+        const flash = nebulaGroup.getObjectByName('flash') as THREE.Sprite | null;
+        if (flash) {
+          const f = Math.max(0, 1 - c * 14); // blinding only in the first instants
+          flash.scale.setScalar(60 + f * 2400);
+          (flash.material as THREE.SpriteMaterial).opacity = 0.25 + f * 0.75;
+        }
+        glowS1.visible = false;
+        glowS2.visible = false;
+        sunLight.intensity = 0.35;
+      } else {
+        glowS1.visible = true;
+        glowS2.visible = true;
+      }
+
+      let sunScale = 1;
+      let lum = 1;
+      const tint = sunUniforms.uTint.value as THREE.Color;
+      tint.setRGB(1, 1, 1);
+      if (eraPhase === 'disk') {
+        sunScale = 0.62; // young T Tauri sun
+        lum = 0.75;
+        tint.setRGB(1, 0.72, 0.5);
+      } else if (eraPhase === 'system') {
+        // faint young Sun → present → slow brightening (~10% per Gyr)
+        lum = years < 0 ? 0.7 + 0.3 * Math.min(1, (years + 4.5 * GYR) / (4.5 * GYR)) : 1 + (years / GYR) * 0.1;
+        sunScale = 0.9 + 0.1 * Math.min(1, lum);
+      } else if (eraPhase === 'redgiant') {
+        const g = Math.min(1, (years - 5 * GYR) / (2.6 * GYR));
+        sunScale = 1 + g * 4.4; // swells past Mercury, then Venus
+        lum = 1.6 + g * 1.2;
+        tint.setRGB(1, 0.5 - g * 0.15, 0.28 - g * 0.12);
+      } else if (eraPhase === 'whitedwarf') {
+        sunScale = 0.22;
+        lum = 1.4;
+        tint.setRGB(0.75, 0.85, 1);
+      }
+      sunUniforms.uLum.value = lum;
+      sunMesh.scale.setScalar(sunScale);
+      glowS1.scale.setScalar(SUN_RADIUS * 6.5 * (eraPhase === 'redgiant' ? sunScale * 1.15 : sunScale));
+      glowS2.scale.setScalar(SUN_RADIUS * 3.1 * sunScale);
+      const g1m = glowS1.material as THREE.SpriteMaterial;
+      const g2m = glowS2.material as THREE.SpriteMaterial;
+      if (eraPhase === 'redgiant') { g1m.color.setRGB(1, 0.42, 0.22); g2m.color.setRGB(1, 0.55, 0.3); }
+      else if (eraPhase === 'whitedwarf') { g1m.color.setRGB(0.7, 0.82, 1); g2m.color.setRGB(0.8, 0.9, 1); }
+      else if (eraPhase === 'disk') { g1m.color.setRGB(1, 0.6, 0.35); g2m.color.setRGB(1, 0.7, 0.45); }
+      else { g1m.color.setRGB(1, 1, 1); g2m.color.setRGB(1, 1, 1); }
+      sunLight.intensity = eraPhase === 'cosmic' ? 0.35 : 1.15 * Math.min(1.8, lum);
+      sunLight.color.set(eraPhase === 'redgiant' ? 0xffb08a : eraPhase === 'whitedwarf' ? 0xdbe8ff : 0xfff1d6);
+
+      // engulfment + scorched Earth
+      const merc = bodyMap.get('mercury');
+      const ven = bodyMap.get('venus');
+      const sunR = SUN_RADIUS * sunScale;
+      if (merc) merc.obj.visible = system && !(eraPhase !== 'system' && sunR > 8);
+      if (ven) ven.obj.visible = system && !(eraPhase !== 'system' && sunR > 14);
+      if (eraPhase === 'whitedwarf') {
+        if (merc) merc.obj.visible = false;
+        if (ven) ven.obj.visible = false;
+      }
+      const earthSwap = photoSwaps.find((sw) => sw.id === 'earth');
+      const scorched = years > 1.1 * GYR;
+      if (earthSwap) earthSwap.mat.color.setRGB(1, scorched ? 0.62 : 1, scorched ? 0.45 : 1);
+      if (cloudSwap) cloudSwap.mat.visible = !scorched;
+
+      if (eraPhase !== 'system' && selectedId) deselect();
+      if (prevPhase !== eraPhase) {
+        refreshLabels();
+        refreshOrbits();
+      }
     },
     snapshot: () => {
       composer.render();
@@ -1076,6 +1268,45 @@ function Segment<T extends string>({
   );
 }
 
+/* ── deep-time epochs (public scientific record; deep-time scenes are
+      schematic — the exact ephemeris applies 1800–2050) ── */
+const GYR = 1e9;
+interface Era { t: number; year: string; title: string; text: string }
+const ERAS: Era[] = [
+  { t: -13.8 * GYR, year: '13.8 BILLION YEARS AGO', title: 'The Big Bang', text: 'Space, time, matter and energy emerge from a hot, dense state. Within the first minutes, the universe forges the hydrogen and helium that will one day build every star and planet.' },
+  { t: -13.6 * GYR, year: '13.6 BILLION YEARS AGO', title: 'First Stars & Galaxies', text: 'Gravity pulls gas into the first stars. Generations of them fuse carbon, oxygen and iron, then scatter those elements when they die. The Milky Way begins to assemble.' },
+  { t: -4.6 * GYR, year: '4.6 BILLION YEARS AGO', title: 'The Solar Nebula', text: 'A cloud of gas and stardust collapses — likely nudged by a nearby supernova. The young Sun ignites at the centre of a spinning protoplanetary disk.' },
+  { t: -4.57 * GYR, year: '4.57 BILLION YEARS AGO', title: 'Planets Accrete', text: 'Dust grains collide and stick, growing into planetesimals, then protoplanets. The gas giants form fast in the cold outer disk; the rocky worlds assemble in the heat near the Sun.' },
+  { t: -4.51 * GYR, year: '4.51 BILLION YEARS AGO', title: 'The Moon Forms', text: 'A Mars-sized body, Theia, slams into the young Earth. The ejected debris coalesces into the Moon — possibly within a few decades.' },
+  { t: -3.95 * GYR, year: '~3.9 BILLION YEARS AGO', title: 'Late Heavy Bombardment', text: 'The giant planets migrate and scatter debris sunward. Asteroids and comets pound the inner worlds — the scars still cover Mercury, the Moon and Callisto.' },
+  { t: -3.8 * GYR, year: '~3.8 BILLION YEARS AGO', title: 'Life Begins on Earth', text: 'Chemistry becomes biology in Earth\u2019s oceans, while the Sun still shines ~25% fainter than today. Somehow, liquid water persists — the faint young Sun paradox.' },
+  { t: -2.4 * GYR, year: '2.4 BILLION YEARS AGO', title: 'The Great Oxidation', text: 'Cyanobacteria flood the atmosphere with oxygen — a catastrophe for most life then alive, and the precondition for everything that breathes today.' },
+  { t: -66e6, year: '66 MILLION YEARS AGO', title: 'Chicxulub Impact', text: 'A ~10 km asteroid strikes near today\u2019s Yucat\u00e1n. Around 75% of species vanish, ending the reign of the non-avian dinosaurs.' },
+  { t: -3e5, year: '300,000 YEARS AGO', title: 'Homo Sapiens', text: 'Anatomically modern humans appear in Africa. Within 300 millennia, one of them ships this simulator to production.' },
+  { t: 0, year: 'TODAY', title: 'The Present Epoch', text: 'You are here. Positions on screen are computed from JPL orbital elements and are exact for the present era — eight planets, hundreds of moons, one confirmed biosphere.' },
+  { t: 0.6 * GYR, year: '600 MILLION YEARS FROM NOW', title: 'The Sun Brightens', text: 'Solar luminosity climbs about 10% every billion years. Rising heat and falling CO\u2082 begin to shut down photosynthesis as we know it.' },
+  { t: 1.1 * GYR, year: '1.1 BILLION YEARS FROM NOW', title: 'Oceans Evaporate', text: 'A runaway moist greenhouse boils Earth\u2019s oceans. Sunlight splits the water vapour and the hydrogen escapes to space, leaving a scorched world.' },
+  { t: 5 * GYR, year: '5 BILLION YEARS FROM NOW', title: 'Red Giant Sun', text: 'Core hydrogen spent, the Sun swells enormously — engulfing Mercury, then Venus. Earth\u2019s survival sits on a knife edge at the shoreline of the new Sun.' },
+  { t: 7.9 * GYR, year: '7.9 BILLION YEARS FROM NOW', title: 'White Dwarf', text: 'The Sun sheds its outer layers into a planetary nebula, leaving a white dwarf the size of Earth — cooling for trillions of years among the surviving outer worlds.' },
+];
+
+/* symmetric-log slider mapping: ±100 yr dead zone at centre, log out to the edges */
+const PAST_EXP = Math.log10(13.8 * GYR) - 2;
+const FUT_EXP = Math.log10(8.2 * GYR) - 2;
+function sliderToYears(v: number): number {
+  const s = v / 1000; // -1..1
+  const a = Math.abs(s);
+  if (a < 0.02) return 0;
+  const k = (a - 0.02) / 0.98;
+  const exp = 2 + k * (s < 0 ? PAST_EXP : FUT_EXP);
+  return Math.sign(s) * Math.pow(10, exp);
+}
+function eraFor(years: number): Era {
+  let cur = ERAS[0];
+  for (const e of ERAS) if (e.t <= years + 1) cur = e;
+  return cur;
+}
+
 export default function SolarSystem() {
   const containerRef = useRef<HTMLDivElement>(null);
   const mountRef = useRef<HTMLDivElement>(null);
@@ -1099,6 +1330,9 @@ export default function SolarSystem() {
   const [imagery, setImagery] = useState<'photo' | 'code'>('photo');
   const [drawer, setDrawer] = useState(false);
   const [isFs, setIsFs] = useState(false);
+  const [about, setAbout] = useState(false);
+  const [timeline, setTimeline] = useState(false);
+  const [tlValue, setTlValue] = useState(0); // -1000..1000
 
   pausedRef.current = paused;
 
@@ -1143,6 +1377,27 @@ export default function SolarSystem() {
   const selectBody = useCallback((id: string | null) => {
     engineRef.current?.select(id);
   }, []);
+
+  const tlYears = sliderToYears(tlValue);
+  const tlEra = eraFor(tlYears);
+
+  const openTimeline = () => {
+    setTimeline(true);
+    setDrawer(false);
+    setTlValue(0);
+    engineRef.current?.setEra(0);
+    engineRef.current?.viewPreset('tilt');
+  };
+  const closeTimeline = () => {
+    setTimeline(false);
+    setTlValue(0);
+    engineRef.current?.setEra(0);
+    engineRef.current?.resetToday();
+  };
+  const onScrub = (v: number) => {
+    setTlValue(v);
+    engineRef.current?.setEra(sliderToYears(v));
+  };
 
   const onDateJump = (value: string) => {
     if (!value) return;
@@ -1215,7 +1470,7 @@ export default function SolarSystem() {
     <>
       <SEOHead
         title="Solar System — Live Orbital Simulator"
-        description="A real-time 3D ephemeris of the solar system. Kepler's equation solved every frame against JPL J2000 orbital elements — planets shown where they actually are right now. NASA imagery or fully procedural surfaces, in the browser."
+        description="A real-time 3D ephemeris of the solar system, plus a deep-time timeline from the Big Bang to the death of the Sun. Kepler's equation solved every frame against JPL J2000 orbital elements. NASA imagery or fully procedural surfaces."
       />
 
       <div
@@ -1243,8 +1498,8 @@ export default function SolarSystem() {
           )}
         </AnimatePresence>
 
-        {/* header block */}
-        {!(isMobile && (info || drawer)) && (
+        {/* header */}
+        {!(isMobile && (info || drawer || timeline)) && (
           <div style={{ position: 'absolute', top: 14, left: isMobile ? 16 : 32, zIndex: 10, pointerEvents: 'none' }}>
             <Link
               to="/portfolio"
@@ -1265,49 +1520,119 @@ export default function SolarSystem() {
           </div>
         )}
 
-        {/* body picker */}
-        {isMobile ? (
-          !drawer && (
-            <div
-              style={{ position: 'absolute', left: 0, right: 0, bottom: 70, zIndex: 20, display: 'flex', gap: 8, overflowX: 'auto', padding: '0 12px' }}
-              className="no-scrollbar"
+        {/* "?" about button — always visible top right */}
+        <button
+          onClick={() => setAbout(true)}
+          aria-label="About this simulator"
+          style={{ ...PANEL_BG, position: 'absolute', top: 14, right: isMobile ? 14 : 32, zIndex: 25, width: 30, height: 30, borderRadius: 999 }}
+          className="font-mono text-sm text-white/55 hover:text-primary transition-colors flex items-center justify-center"
+        >
+          ?
+        </button>
+
+        {/* about modal */}
+        <AnimatePresence>
+          {about && (
+            <motion.div
+              key="about"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              style={{ position: 'absolute', inset: 0, zIndex: 60, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}
+              onClick={() => setAbout(false)}
             >
+              <motion.div
+                initial={{ opacity: 0, y: 16 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: 16 }}
+                style={{ ...PANEL_BG, maxWidth: 560, maxHeight: '80%', overflowY: 'auto', padding: isMobile ? 20 : 28 }}
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="flex items-center justify-between mb-4">
+                  <p className="font-mono text-[10px] tracking-[0.3em] text-primary">HOW THIS IS BUILT</p>
+                  <button onClick={() => setAbout(false)} aria-label="Close" className="text-white/40 hover:text-primary text-sm px-1">✕</button>
+                </div>
+                <p className="font-sans-body text-sm text-white/70 leading-relaxed">
+                  This is a live ephemeris, not an animation. Every frame, Kepler's equation is solved
+                  by Newton–Raphson iteration against JPL J2000 orbital elements — eccentricity,
+                  inclination and orbital phase are real, so the planets sit where they actually are
+                  for any date from 1800 to 2050.
+                </p>
+                <p className="font-sans-body text-sm text-white/70 leading-relaxed mt-3">
+                  Surfaces run in two modes: photographic maps built from NASA mission imagery (Blue
+                  Marble, LRO, MESSENGER, Viking, Voyager, Cassini), or a fully procedural set
+                  generated from seeded noise in the browser — flip the IMAGERY toggle to compare.
+                </p>
+                <p className="font-sans-body text-sm text-white/70 leading-relaxed mt-3">
+                  The TIMELINE scrubs 13.8 billion years of cosmic history, from the Big Bang through
+                  the Sun's red-giant future — epochs from the public scientific record. Deep-time
+                  scenes are schematic reconstructions; the exact ephemeris applies 1800–2050.
+                  Distances compress on a power curve and radii follow a 0.55-power law so the true
+                  size hierarchy reads while every body stays visible.
+                </p>
+                <p className="font-mono text-[9px] tracking-[0.18em] text-white/30 mt-5 leading-relaxed">
+                  THREE.JS · WEBGL · GLSL · CUSTOM KEPLER SOLVER · NASA IMAGERY + PROCEDURAL TEXTURES
+                  <br />
+                  PHOTO MAPS: NASA (PUBLIC DOMAIN) · PLANET MAPS BY JAMES HASTINGS-TREW FROM NASA IMAGERY
+                  <br />
+                  <a
+                    href="https://github.com/macraemyintminhein98/macraemyint-portfolio"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-white/50 hover:text-primary transition-colors"
+                  >
+                    VIEW SOURCE →
+                  </a>
+                </p>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* body picker */}
+        {!timeline &&
+          (isMobile ? (
+            !drawer && (
+              <div
+                style={{ position: 'absolute', left: 0, right: 0, bottom: 70, zIndex: 20, display: 'flex', gap: 8, overflowX: 'auto', padding: '0 12px' }}
+                className="no-scrollbar"
+              >
+                {RAIL_BODIES.map((b) => (
+                  <button
+                    key={b.id}
+                    onClick={() => selectBody(selectedId === b.id ? null : b.id)}
+                    style={{ ...PANEL_BG, flexShrink: 0, borderRadius: 999, padding: '6px 13px' }}
+                    className={`font-mono text-[10px] tracking-[0.2em] transition-colors ${
+                      selectedId === b.id ? 'text-primary' : 'text-white/55'
+                    }`}
+                  >
+                    {b.short}
+                  </button>
+                ))}
+              </div>
+            )
+          ) : (
+            <div style={{ position: 'absolute', left: 32, top: '50%', transform: 'translateY(-50%)', zIndex: 10, display: 'flex', flexDirection: 'column', gap: 2 }}>
               {RAIL_BODIES.map((b) => (
                 <button
                   key={b.id}
                   onClick={() => selectBody(selectedId === b.id ? null : b.id)}
-                  style={{ ...PANEL_BG, flexShrink: 0, borderRadius: 999, padding: '6px 13px' }}
-                  className={`font-mono text-[10px] tracking-[0.2em] transition-colors ${
-                    selectedId === b.id ? 'text-primary' : 'text-white/55'
+                  title={b.name}
+                  className={`font-mono text-[11px] tracking-[0.25em] text-left px-3 py-1.5 border-l transition-colors ${
+                    selectedId === b.id
+                      ? 'text-primary border-primary'
+                      : 'text-white/35 border-white/10 hover:text-white hover:border-white/40'
                   }`}
                 >
                   {b.short}
                 </button>
               ))}
             </div>
-          )
-        ) : (
-          <div style={{ position: 'absolute', left: 32, top: '50%', transform: 'translateY(-50%)', zIndex: 10, display: 'flex', flexDirection: 'column', gap: 2 }}>
-            {RAIL_BODIES.map((b) => (
-              <button
-                key={b.id}
-                onClick={() => selectBody(selectedId === b.id ? null : b.id)}
-                title={b.name}
-                className={`font-mono text-[11px] tracking-[0.25em] text-left px-3 py-1.5 border-l transition-colors ${
-                  selectedId === b.id
-                    ? 'text-primary border-primary'
-                    : 'text-white/35 border-white/10 hover:text-white hover:border-white/40'
-                }`}
-              >
-                {b.short}
-              </button>
-            ))}
-          </div>
-        )}
+          ))}
 
         {/* info panel */}
         <AnimatePresence>
-          {info && !(isMobile && drawer) && (
+          {info && !timeline && !(isMobile && drawer) && (
             <motion.aside
               key={selectedId}
               initial={{ opacity: 0, y: isMobile ? 24 : 0 }}
@@ -1321,11 +1646,7 @@ export default function SolarSystem() {
                   <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: info.color }} />
                   <p className="font-mono text-[9px] tracking-[0.3em] text-white/40 uppercase truncate">{info.type}</p>
                 </div>
-                <button
-                  onClick={() => selectBody(null)}
-                  aria-label="Close"
-                  className="font-mono text-white/40 hover:text-primary transition-colors text-sm leading-none px-1"
-                >
+                <button onClick={() => selectBody(null)} aria-label="Close" className="font-mono text-white/40 hover:text-primary transition-colors text-sm leading-none px-1">
                   ✕
                 </button>
               </div>
@@ -1339,9 +1660,7 @@ export default function SolarSystem() {
                   </div>
                 ))}
               </dl>
-              <p className="font-sans-body text-[13px] md:text-sm text-white/70 leading-relaxed mt-3 md:mt-4">
-                {info.fact}
-              </p>
+              <p className="font-sans-body text-[13px] md:text-sm text-white/70 leading-relaxed mt-3 md:mt-4">{info.fact}</p>
               {!isMobile && (
                 <button
                   onClick={() => selectBody(null)}
@@ -1356,7 +1675,7 @@ export default function SolarSystem() {
 
         {/* mobile settings drawer */}
         <AnimatePresence>
-          {isMobile && drawer && (
+          {isMobile && drawer && !timeline && (
             <motion.div
               key="drawer"
               initial={{ opacity: 0, y: 24 }}
@@ -1404,148 +1723,172 @@ export default function SolarSystem() {
           )}
         </AnimatePresence>
 
-        {/* control deck */}
-        <div
-          style={{
-            position: 'absolute',
-            bottom: isMobile ? 10 : 16,
-            left: '50%',
-            transform: 'translateX(-50%)',
-            zIndex: 20,
-            maxWidth: '96vw',
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            gap: 8,
-          }}
-        >
-          {/* secondary row — desktop only (mobile gets the drawer) */}
-          {!isMobile && (
-            <div style={{ ...PANEL_BG, padding: '5px 14px' }} className="flex items-center gap-4 flex-nowrap">
-              {imagerySeg}
-              <span style={{ width: 1, height: 18, background: 'rgba(255,255,255,0.1)' }} />
-              {viewButtons}
-              <span style={{ width: 1, height: 18, background: 'rgba(255,255,255,0.1)' }} />
-              <div className="flex items-center gap-1.5">
-                <span className="font-mono text-[9px] tracking-[0.2em] text-white/30">GO TO</span>
-                {dateInput}
-              </div>
-              <span style={{ width: 1, height: 18, background: 'rgba(255,255,255,0.1)' }} />
-              <button onClick={takeSnapshot} aria-label="Save image" title="Save a PNG of the current view" className="p-1 text-white/50 hover:text-primary transition-colors">
-                <Camera size={14} />
-              </button>
-              <button onClick={toggleFullscreen} aria-label="Fullscreen" title="Fullscreen" className="p-1 text-white/50 hover:text-primary transition-colors">
-                {isFs ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
-              </button>
-            </div>
-          )}
-
-          {/* primary row */}
-          <div style={{ ...PANEL_BG, padding: isMobile ? '6px 10px' : '8px 16px' }}>
-            <div className="flex items-center gap-1.5 md:gap-3 flex-nowrap">
-              <button onClick={() => setSpeedIdx((i) => Math.max(0, i - 1))} aria-label="Slower" className="p-1.5 rounded text-white/60 hover:text-primary transition-colors">
-                <Rewind size={14} />
-              </button>
-              <button onClick={() => setPaused((p) => !p)} aria-label={paused ? 'Play' : 'Pause'} className="p-1.5 rounded text-foreground hover:text-primary transition-colors">
-                {paused ? <Play size={15} /> : <Pause size={15} />}
-              </button>
-              <button onClick={() => setSpeedIdx((i) => Math.min(SPEEDS.length - 1, i + 1))} aria-label="Faster" className="p-1.5 rounded text-white/60 hover:text-primary transition-colors">
-                <FastForward size={14} />
-              </button>
-              {!isMobile && (
-                <>
-                  <button
-                    onClick={() => setDir((d) => (d === 1 ? -1 : 1))}
-                    aria-pressed={dir === -1}
-                    className={`font-mono text-[10px] tracking-[0.2em] px-2 py-1 rounded transition-colors ${
-                      dir === -1 ? 'text-primary' : 'text-white/30 hover:text-white/60'
-                    }`}
-                  >
-                    REV
-                  </button>
-                  <span className="font-mono text-[10px] tracking-[0.2em] text-white/50 text-center" style={{ minWidth: 68 }}>
-                    {SPEEDS[speedIdx].label}
-                  </span>
-                </>
-              )}
-
-              <span style={{ width: 1, height: 22, background: 'rgba(255,255,255,0.1)' }} />
-
-              <div className="flex flex-col items-center leading-tight" style={{ minWidth: isMobile ? 126 : 168 }}>
-                <span ref={dateRef} className="font-mono text-[10px] md:text-xs text-foreground tabular-nums whitespace-nowrap" />
-                <span ref={deltaRef} className="font-mono text-[8px] md:text-[9px] tracking-[0.18em] text-primary/80 whitespace-nowrap" />
-              </div>
-              <button
-                onClick={() => engineRef.current?.resetToday()}
-                className="font-mono text-[9px] md:text-[10px] tracking-[0.2em] text-white/50 border border-white/15 rounded px-2 py-1 hover:border-primary hover:text-primary transition-colors"
-              >
-                TODAY
-              </button>
-
-              {!isMobile && (
-                <>
-                  <span style={{ width: 1, height: 22, background: 'rgba(255,255,255,0.1)' }} />
-                  <div className="flex items-center">
-                    <HudToggle label="ORBITS" on={orbits} onClick={() => setOrbits((v) => !v)} />
-                    <HudToggle label="LABELS" on={labels} onClick={() => setLabels((v) => !v)} />
-                    <HudToggle label="BELT" on={belt} onClick={() => setBelt((v) => !v)} />
-                    <HudToggle label="MOONS" on={moons} onClick={() => setMoons((v) => !v)} />
+        {/* ── COSMIC TIMELINE ── */}
+        <AnimatePresence>
+          {timeline && (
+            <motion.div
+              key="timeline"
+              initial={{ opacity: 0, y: 24 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 24 }}
+              transition={{ duration: 0.3 }}
+              style={{ position: 'absolute', left: '50%', transform: 'translateX(-50%)', bottom: isMobile ? 10 : 16, zIndex: 35, width: isMobile ? 'calc(100% - 20px)' : 'min(760px, 92vw)' }}
+            >
+              {/* era card */}
+              <div style={{ ...PANEL_BG, padding: isMobile ? 14 : 18, marginBottom: 8 }}>
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="font-mono text-[9px] tracking-[0.28em] text-primary">{tlEra.year}</p>
+                    <h3 className="font-serif-display italic text-xl md:text-2xl text-foreground mt-1 leading-tight">{tlEra.title}</h3>
                   </div>
-                </>
-              )}
-              {isMobile && (
-                <button
-                  onClick={() => setDrawer((d) => !d)}
-                  aria-label="More controls"
-                  aria-expanded={drawer}
-                  className={`p-1.5 rounded transition-colors ${drawer ? 'text-primary' : 'text-white/60 hover:text-primary'}`}
-                >
-                  <Settings2 size={15} />
+                  <button
+                    onClick={closeTimeline}
+                    className="shrink-0 font-mono text-[9px] tracking-[0.2em] text-white/50 border border-white/15 rounded px-2 py-1.5 hover:border-primary hover:text-primary transition-colors whitespace-nowrap"
+                  >
+                    RETURN TO TODAY
+                  </button>
+                </div>
+                <p className="font-sans-body text-[13px] md:text-sm text-white/65 leading-relaxed mt-2">{tlEra.text}</p>
+                <p className="font-mono text-[8px] tracking-[0.15em] text-white/25 mt-2.5">
+                  EPHEMERIS EXACT 1800–2050 · DEEP-TIME SCENES ARE SCHEMATIC RECONSTRUCTIONS
+                </p>
+              </div>
+              {/* scrubber */}
+              <div style={{ ...PANEL_BG, padding: isMobile ? '10px 14px' : '12px 18px' }}>
+                <div style={{ position: 'relative' }}>
+                  <input
+                    type="range"
+                    min={-1000}
+                    max={1000}
+                    step={1}
+                    value={tlValue}
+                    onChange={(e) => onScrub(Number(e.target.value))}
+                    aria-label="Cosmic timeline"
+                    className="tl-slider"
+                    style={{ width: '100%' }}
+                  />
+                </div>
+                <div className="flex justify-between mt-1.5">
+                  <span className="font-mono text-[8px] md:text-[9px] tracking-[0.18em] text-white/30">← 13.8 BILLION YEARS AGO</span>
+                  <span className="font-mono text-[8px] md:text-[9px] tracking-[0.18em] text-primary/70">TODAY</span>
+                  <span className="font-mono text-[8px] md:text-[9px] tracking-[0.18em] text-white/30">SUN'S DEATH →</span>
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* control deck */}
+        {!timeline && (
+          <div
+            style={{ position: 'absolute', bottom: isMobile ? 10 : 16, left: '50%', transform: 'translateX(-50%)', zIndex: 20, maxWidth: '96vw', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}
+          >
+            {!isMobile && (
+              <div style={{ ...PANEL_BG, padding: '5px 14px' }} className="flex items-center gap-4 flex-nowrap">
+                {imagerySeg}
+                <span style={{ width: 1, height: 18, background: 'rgba(255,255,255,0.1)' }} />
+                {viewButtons}
+                <span style={{ width: 1, height: 18, background: 'rgba(255,255,255,0.1)' }} />
+                <div className="flex items-center gap-1.5">
+                  <span className="font-mono text-[9px] tracking-[0.2em] text-white/30">GO TO</span>
+                  {dateInput}
+                </div>
+                <span style={{ width: 1, height: 18, background: 'rgba(255,255,255,0.1)' }} />
+                <button onClick={takeSnapshot} aria-label="Save image" title="Save a PNG of the current view" className="p-1 text-white/50 hover:text-primary transition-colors">
+                  <Camera size={14} />
                 </button>
-              )}
-              <button onClick={() => engineRef.current?.resetView()} aria-label="Reset view" className="p-1.5 rounded text-white/60 hover:text-primary transition-colors">
-                <RotateCcw size={13} />
-              </button>
+                <button onClick={toggleFullscreen} aria-label="Fullscreen" title="Fullscreen" className="p-1 text-white/50 hover:text-primary transition-colors">
+                  {isFs ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
+                </button>
+              </div>
+            )}
+
+            <div style={{ ...PANEL_BG, padding: isMobile ? '6px 10px' : '8px 16px' }}>
+              <div className="flex items-center gap-1.5 md:gap-3 flex-nowrap">
+                <button onClick={() => setSpeedIdx((i) => Math.max(0, i - 1))} aria-label="Slower" className="p-1.5 rounded text-white/60 hover:text-primary transition-colors">
+                  <Rewind size={14} />
+                </button>
+                <button onClick={() => setPaused((p) => !p)} aria-label={paused ? 'Play' : 'Pause'} className="p-1.5 rounded text-foreground hover:text-primary transition-colors">
+                  {paused ? <Play size={15} /> : <Pause size={15} />}
+                </button>
+                <button onClick={() => setSpeedIdx((i) => Math.min(SPEEDS.length - 1, i + 1))} aria-label="Faster" className="p-1.5 rounded text-white/60 hover:text-primary transition-colors">
+                  <FastForward size={14} />
+                </button>
+                {!isMobile && (
+                  <>
+                    <button
+                      onClick={() => setDir((d) => (d === 1 ? -1 : 1))}
+                      aria-pressed={dir === -1}
+                      className={`font-mono text-[10px] tracking-[0.2em] px-2 py-1 rounded transition-colors ${
+                        dir === -1 ? 'text-primary' : 'text-white/30 hover:text-white/60'
+                      }`}
+                    >
+                      REV
+                    </button>
+                    <span className="font-mono text-[10px] tracking-[0.2em] text-white/50 text-center" style={{ minWidth: 68 }}>
+                      {SPEEDS[speedIdx].label}
+                    </span>
+                  </>
+                )}
+
+                <span style={{ width: 1, height: 22, background: 'rgba(255,255,255,0.1)' }} />
+
+                <div className="flex flex-col items-center leading-tight" style={{ minWidth: isMobile ? 126 : 168 }}>
+                  <span ref={dateRef} className="font-mono text-[10px] md:text-xs text-foreground tabular-nums whitespace-nowrap" />
+                  <span ref={deltaRef} className="font-mono text-[8px] md:text-[9px] tracking-[0.18em] text-primary/80 whitespace-nowrap" />
+                </div>
+                <button
+                  onClick={() => engineRef.current?.resetToday()}
+                  className="font-mono text-[9px] md:text-[10px] tracking-[0.2em] text-white/50 border border-white/15 rounded px-2 py-1 hover:border-primary hover:text-primary transition-colors"
+                >
+                  TODAY
+                </button>
+
+                <button
+                  onClick={openTimeline}
+                  aria-label="Cosmic timeline"
+                  title="Cosmic timeline — Big Bang to the death of the Sun"
+                  className="p-1.5 rounded text-primary/80 hover:text-primary transition-colors"
+                >
+                  <History size={15} />
+                </button>
+
+                {!isMobile && (
+                  <>
+                    <span style={{ width: 1, height: 22, background: 'rgba(255,255,255,0.1)' }} />
+                    <div className="flex items-center">
+                      <HudToggle label="ORBITS" on={orbits} onClick={() => setOrbits((v) => !v)} />
+                      <HudToggle label="LABELS" on={labels} onClick={() => setLabels((v) => !v)} />
+                      <HudToggle label="BELT" on={belt} onClick={() => setBelt((v) => !v)} />
+                      <HudToggle label="MOONS" on={moons} onClick={() => setMoons((v) => !v)} />
+                    </div>
+                  </>
+                )}
+                {isMobile && (
+                  <button
+                    onClick={() => setDrawer((d) => !d)}
+                    aria-label="More controls"
+                    aria-expanded={drawer}
+                    className={`p-1.5 rounded transition-colors ${drawer ? 'text-primary' : 'text-white/60 hover:text-primary'}`}
+                  >
+                    <Settings2 size={15} />
+                  </button>
+                )}
+                <button onClick={() => engineRef.current?.resetView()} aria-label="Reset view" className="p-1.5 rounded text-white/60 hover:text-primary transition-colors">
+                  <RotateCcw size={13} />
+                </button>
+              </div>
             </div>
           </div>
-        </div>
+        )}
 
-        {/* hint — desktop only */}
-        {!isMobile && (
+        {/* hint */}
+        {!isMobile && !timeline && (
           <p style={{ position: 'absolute', bottom: 18, right: 32, zIndex: 10 }} className="font-mono text-[9px] tracking-[0.25em] text-white/20">
             DRAG — ORBIT · SCROLL — ZOOM · CLICK — FOCUS · SPACE — PAUSE
           </p>
         )}
       </div>
-
-      {/* build notes */}
-      <section className="bg-black border-t border-white/[0.06] px-5 md:px-8 lg:px-16 py-10">
-        <p className="font-mono text-[10px] tracking-[0.3em] text-primary mb-3">HOW THIS IS BUILT</p>
-        <p className="font-sans-body text-sm text-white/60 leading-relaxed max-w-2xl">
-          This is a live ephemeris, not an animation. Every frame, Kepler's equation is solved by
-          Newton–Raphson iteration against JPL J2000 orbital elements — eccentricity, inclination and
-          orbital phase are real, so the planets sit where they actually are for any date from 1800
-          to 2050. Surfaces run in two modes: real photographic maps built from NASA mission imagery
-          (Blue Marble, LRO, MESSENGER, Viking, Voyager, Cassini), or a fully procedural set
-          generated from seeded noise in the browser — flip the IMAGERY toggle to compare. Distances
-          compress on a power curve and radii sit on a cube-root scale so all eight planets stay
-          visible at once.
-        </p>
-        <p className="font-mono text-[10px] tracking-[0.2em] text-white/35 mt-4">
-          THREE.JS · WEBGL · GLSL SHADERS · CUSTOM KEPLER SOLVER · NASA IMAGERY + PROCEDURAL TEXTURES ·{' '}
-          <a
-            href="https://github.com/macraemyintminhein98/macraemyint-portfolio"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-white/50 hover:text-primary transition-colors"
-          >
-            VIEW SOURCE →
-          </a>
-        </p>
-        <p className="font-mono text-[9px] tracking-[0.15em] text-white/20 mt-2">
-          PHOTO MAPS: NASA (PUBLIC DOMAIN) · PLANET MAPS BY JAMES HASTINGS-TREW FROM NASA IMAGERY
-        </p>
-      </section>
     </>
   );
 }

@@ -89,8 +89,11 @@ export interface PlanetDef {
 
 export const SUN_RADIUS = 5;
 export const auToScene = (au: number) => 18 * Math.pow(au, 0.78);
-export const planetRadius = (km: number) => 0.11 * Math.cbrt(km);
-export const moonRadius = (km: number) => Math.max(0.17, 0.062 * Math.cbrt(km));
+/* 0.55-power law: steeper than cube-root so real size hierarchy reads
+ * correctly (Jupiter ≈ 3.7× Earth, Earth ≈ 1.7× Mercury, Moon ≈ 0.28× Earth)
+ * while the smallest bodies stay visible and clickable. */
+export const planetRadius = (km: number) => 0.01 * Math.pow(km, 0.55);
+export const moonRadius = (km: number) => Math.max(0.14, 0.0058 * Math.pow(km, 0.55));
 
 export const SUN = {
   id: 'sun',

@@ -472,3 +472,11 @@
 /* utility: hide scrollbars on horizontal chip rows (solar system HUD) */
 .no-scrollbar { scrollbar-width: none; -ms-overflow-style: none; }
 .no-scrollbar::-webkit-scrollbar { display: none; }
+
+/* cosmic timeline scrubber (solar system lab) */
+.tl-slider { -webkit-appearance: none; appearance: none; height: 4px; border-radius: 2px;
+  background: linear-gradient(90deg, rgba(255,255,255,0.25) 0%, rgba(255,255,255,0.08) 48%, hsl(45 53% 54%) 50%, rgba(255,255,255,0.08) 52%, rgba(255,120,40,0.5) 100%); outline: none; }
+.tl-slider::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 16px; height: 16px; border-radius: 50%;
+  background: hsl(45 53% 54%); border: 2px solid #0a0a0b; box-shadow: 0 0 10px hsla(45, 53%, 54%, 0.5); cursor: pointer; }
+.tl-slider::-moz-range-thumb { width: 16px; height: 16px; border-radius: 50%;
+  background: hsl(45 53% 54%); border: 2px solid #0a0a0b; box-shadow: 0 0 10px hsla(45, 53%, 54%, 0.5); cursor: pointer; }
