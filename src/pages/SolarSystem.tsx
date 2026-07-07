@@ -11,7 +11,7 @@ import { useEffect, useRef, useState, useCallback, type CSSProperties } from 're
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Play, Pause, Rewind, FastForward, RotateCcw } from 'lucide-react';
+import { Play, Pause, Rewind, FastForward, RotateCcw, Camera, Maximize2, Minimize2, Settings2 } from 'lucide-react';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
@@ -118,6 +118,11 @@ export interface SolarEngine {
   setOrbits: (on: boolean) => void;
   setLabels: (on: boolean) => void;
   setBelt: (on: boolean) => void;
+  setMoons: (on: boolean) => void;
+  setImagery: (mode: 'photo' | 'code') => void;
+  viewPreset: (kind: 'top' | 'tilt' | 'edge') => void;
+  setDate: (ms: number) => void;
+  snapshot: () => string;
   dispose: () => void;
 }
 
@@ -181,6 +186,9 @@ function createSolarEngine(
   };
 
   const rayTargets: THREE.Object3D[] = [];
+  const photoSwaps: { id: string; mat: THREE.MeshLambertMaterial; proc: THREE.Texture }[] = [];
+  let cloudSwap: { mat: THREE.MeshLambertMaterial; proc: THREE.Texture } | null = null;
+  const moonNodes: THREE.Object3D[] = [];
   const bodyMap = new Map<string, { obj: THREE.Object3D; radius: number }>();
   const labelEls = new Map<string, { el: HTMLDivElement; group: string }>();
   const orbitLines: { line: THREE.Line; id: string; baseOpacity: number }[] = [];
@@ -362,6 +370,7 @@ function createSolarEngine(
     const mesh = new THREE.Mesh(geo, mat);
     mesh.userData.bodyId = p.id;
     tiltGroup.add(mesh);
+    photoSwaps.push({ id: p.id, mat, proc: surface });
     rayTargets.push(mesh);
     bodyMap.set(p.id, { obj: anchor, radius: r });
 
@@ -373,6 +382,7 @@ function createSolarEngine(
       );
       cloudsMesh = new THREE.Mesh(track(new THREE.SphereGeometry(r * 1.015, 48, 32)), cMat);
       tiltGroup.add(cloudsMesh);
+      cloudSwap = { mat: cMat, proc: cTex };
     }
 
     if (p.atmosphere) {
@@ -446,10 +456,9 @@ function createSolarEngine(
       anchor.add(pivot);
       const mr = moonRadius(m.radiusKm);
       const mTex = track(buildSurfaceTexture(m.texture));
-      const mMesh = new THREE.Mesh(
-        track(new THREE.SphereGeometry(mr, 24, 16)),
-        track(new THREE.MeshLambertMaterial({ map: mTex }))
-      );
+      const mMat = track(new THREE.MeshLambertMaterial({ map: mTex }));
+      const mMesh = new THREE.Mesh(track(new THREE.SphereGeometry(mr, 24, 16)), mMat);
+      if (m.id === 'moon') photoSwaps.push({ id: 'moon', mat: mMat, proc: mTex });
       mMesh.position.x = m.dist;
       mMesh.userData.bodyId = m.id;
       pivot.add(mMesh);
@@ -470,6 +479,7 @@ function createSolarEngine(
       const oline = new THREE.Line(og, om);
       anchor.add(oline);
       orbitLines.push({ line: oline, id: m.id, baseOpacity: 0.16 });
+      moonNodes.push(pivot, mMesh, oline);
 
       moonsRT.push({ pivot, mesh: mMesh, periodDays: m.periodDays });
     }
@@ -588,6 +598,8 @@ function createSolarEngine(
   let showOrbits = true;
   let showLabels = true;
   let showBelt = true;
+  let showMoons = true;
+  let imageryMode: 'photo' | 'code' = 'photo';
   let selectedId: string | null = null;
   let readySent = false;
   let disposed = false;
@@ -609,7 +621,29 @@ function createSolarEngine(
     endOffset: THREE.Vector3;
     startTarget: THREE.Vector3;
   } | null = null;
-  let homeFlight: { t: number; dur: number; fromCam: THREE.Vector3; fromTarget: THREE.Vector3 } | null = null;
+  let homeFlight: {
+    t: number;
+    dur: number;
+    fromCam: THREE.Vector3;
+    fromTarget: THREE.Vector3;
+    toCam: THREE.Vector3;
+  } | null = null;
+
+  function flyTo(toCam: THREE.Vector3) {
+    selectedId = null;
+    flight = null;
+    cb.onSelect(null);
+    homeFlight = {
+      t: 0,
+      dur: 1.5,
+      fromCam: camera.position.clone(),
+      fromTarget: controls.target.clone(),
+      toCam,
+    };
+    controls.enabled = false;
+    refreshLabels();
+    refreshOrbits();
+  }
 
   function refreshLabels() {
     const selParent = moonParent.get(selectedId ?? '');
@@ -617,7 +651,8 @@ function createSolarEngine(
       let visible = showLabels;
       if (rec.group.startsWith('moons:')) {
         const parent = rec.group.slice(6);
-        visible = showLabels && (selectedId === parent || selectedId === id || selParent === parent);
+        visible =
+          showMoons && showLabels && (selectedId === parent || selectedId === id || selParent === parent);
       } else if (selectedId) {
         // focused: only the selected body (or the parent of a selected moon) keeps its label
         visible = showLabels && (id === selectedId || id === selParent);
@@ -680,13 +715,63 @@ function createSolarEngine(
   }
 
   function resetView() {
-    selectedId = null;
-    flight = null;
-    cb.onSelect(null);
-    homeFlight = { t: 0, dur: 1.5, fromCam: camera.position.clone(), fromTarget: controls.target.clone() };
-    controls.enabled = false;
-    refreshLabels();
-    refreshOrbits();
+    flyTo(HOME_CAM.clone());
+  }
+
+  /* ── NASA photo imagery (lazy, progressive; procedural remains the fallback) ── */
+  const PHOTO_URLS: Record<string, string> = {
+    mercury: '/textures/mercury.jpg',
+    venus: '/textures/venus.jpg',
+    earth: '/textures/earth.jpg',
+    earth_clouds: '/textures/earth_clouds.jpg',
+    mars: '/textures/mars.jpg',
+    jupiter: '/textures/jupiter.jpg',
+    saturn: '/textures/saturn.jpg',
+    uranus: '/textures/uranus.jpg',
+    neptune: '/textures/neptune.jpg',
+    moon: '/textures/moon.jpg',
+  };
+  const photoCache = new Map<string, THREE.Texture>();
+  const texLoader = new THREE.TextureLoader();
+  let photoRequested = false;
+
+  function applyImagery() {
+    for (const sw of photoSwaps) {
+      const photo = photoCache.get(sw.id);
+      sw.mat.map = imageryMode === 'photo' && photo ? photo : sw.proc;
+      sw.mat.needsUpdate = true;
+    }
+    if (cloudSwap) {
+      const photo = photoCache.get('earth_clouds');
+      if (imageryMode === 'photo' && photo) {
+        cloudSwap.mat.map = null;
+        cloudSwap.mat.alphaMap = photo; // NASA cloud-fraction map drives transparency
+        cloudSwap.mat.color.set(0xffffff);
+      } else {
+        cloudSwap.mat.alphaMap = null;
+        cloudSwap.mat.map = cloudSwap.proc;
+      }
+      cloudSwap.mat.needsUpdate = true;
+    }
+  }
+
+  function loadPhotoSet() {
+    if (photoRequested) return;
+    photoRequested = true;
+    for (const id of Object.keys(PHOTO_URLS)) {
+      texLoader.load(PHOTO_URLS[id], (t) => {
+        if (disposed) {
+          t.dispose();
+          return;
+        }
+        t.colorSpace = THREE.SRGBColorSpace;
+        t.anisotropy = 8;
+        t.wrapS = THREE.RepeatWrapping;
+        photoCache.set(id, t);
+        disposables.push(t);
+        applyImagery();
+      });
+    }
   }
 
   /* ── picking ── */
@@ -706,7 +791,7 @@ function createSolarEngine(
     const rect = renderer.domElement.getBoundingClientRect();
     ndc.set(((e.clientX - rect.left) / rect.width) * 2 - 1, -((e.clientY - rect.top) / rect.height) * 2 + 1);
     raycaster.setFromCamera(ndc, camera);
-    const hits = raycaster.intersectObjects(rayTargets, false);
+    const hits = raycaster.intersectObjects(rayTargets.filter((t) => t.visible), false);
     if (hits.length > 0) {
       const id = hits[0].object.userData.bodyId as string;
       if (id) select(id);
@@ -833,7 +918,7 @@ function createSolarEngine(
     if (homeFlight) {
       homeFlight.t += dt;
       const k = easeInOutCubic(Math.min(1, homeFlight.t / homeFlight.dur));
-      camera.position.lerpVectors(homeFlight.fromCam, HOME_CAM, k);
+      camera.position.lerpVectors(homeFlight.fromCam, homeFlight.toCam, k);
       controls.target.lerpVectors(homeFlight.fromTarget, ORIGIN, k);
       if (homeFlight.t >= homeFlight.dur) {
         homeFlight = null;
@@ -858,6 +943,7 @@ function createSolarEngine(
   refreshLabels();
   refreshOrbits();
   animate();
+  loadPhotoSet(); // default mode is NASA imagery — streams in over the procedural set
 
   api = {
     select: (id) => (id ? select(id) : deselect()),
@@ -883,6 +969,29 @@ function createSolarEngine(
     setBelt: (on) => {
       showBelt = on;
       beltGroup.visible = on;
+    },
+    setMoons: (on) => {
+      showMoons = on;
+      for (const n of moonNodes) n.visible = on;
+      refreshLabels();
+    },
+    setImagery: (mode) => {
+      imageryMode = mode;
+      if (mode === 'photo') loadPhotoSet();
+      applyImagery();
+    },
+    viewPreset: (kind) => {
+      if (kind === 'top') flyTo(new THREE.Vector3(0.01, 430, 30));
+      else if (kind === 'edge') flyTo(new THREE.Vector3(0, 9, 330));
+      else flyTo(HOME_CAM.clone());
+    },
+    setDate: (ms) => {
+      simDays = (ms - J2000_MS) / DAY_MS;
+      emitDate();
+    },
+    snapshot: () => {
+      composer.render();
+      return renderer.domElement.toDataURL('image/png');
     },
     dispose: () => {
       disposed = true;
@@ -910,9 +1019,9 @@ function createSolarEngine(
 }
 
 /* ═════════════════════════ React component / HUD ════════════════════════ */
-/* Geometry (position/size) is set with inline styles — deterministic across
-   zoom levels, motion transforms, and utility-class edge cases. Tailwind is
-   used only for typography and color. */
+/* Geometry (position/size) uses inline styles — deterministic across zoom
+   levels, motion transforms, and utility-class edge cases. Tailwind is used
+   only for typography and color. */
 
 const RAIL_BODIES = [{ id: 'sun', short: 'SUN', name: SUN.name }].concat(
   PLANETS.map((p) => ({ id: p.id, short: p.short, name: p.name }))
@@ -940,7 +1049,35 @@ function HudToggle({ label, on, onClick }: { label: string; on: boolean; onClick
   );
 }
 
+function Segment<T extends string>({
+  options,
+  value,
+  onChange,
+}: {
+  options: { v: T; label: string }[];
+  value: T;
+  onChange: (v: T) => void;
+}) {
+  return (
+    <div className="flex items-center" style={{ border: '1px solid rgba(255,255,255,0.14)', borderRadius: 5, overflow: 'hidden' }}>
+      {options.map((o) => (
+        <button
+          key={o.v}
+          onClick={() => onChange(o.v)}
+          aria-pressed={value === o.v}
+          className={`font-mono text-[9px] tracking-[0.18em] px-2 py-1 transition-colors ${
+            value === o.v ? 'text-black bg-primary' : 'text-white/45 hover:text-white'
+          }`}
+        >
+          {o.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 export default function SolarSystem() {
+  const containerRef = useRef<HTMLDivElement>(null);
   const mountRef = useRef<HTMLDivElement>(null);
   const engineRef = useRef<SolarEngine | null>(null);
   const dateRef = useRef<HTMLSpanElement>(null);
@@ -958,6 +1095,10 @@ export default function SolarSystem() {
   const [orbits, setOrbits] = useState(true);
   const [labels, setLabels] = useState(true);
   const [belt, setBelt] = useState(true);
+  const [moons, setMoons] = useState(true);
+  const [imagery, setImagery] = useState<'photo' | 'code'>('photo');
+  const [drawer, setDrawer] = useState(false);
+  const [isFs, setIsFs] = useState(false);
 
   pausedRef.current = paused;
 
@@ -965,7 +1106,6 @@ export default function SolarSystem() {
     const mount = mountRef.current;
     if (!mount) return;
     let engine: SolarEngine | null = null;
-    // defer one tick so the boot veil paints before texture generation blocks
     const timer = window.setTimeout(() => {
       engine = createSolarEngine(
         mount,
@@ -982,8 +1122,11 @@ export default function SolarSystem() {
       );
       engineRef.current = engine;
     }, 30);
+    const onFs = () => setIsFs(!!document.fullscreenElement);
+    document.addEventListener('fullscreenchange', onFs);
     return () => {
       window.clearTimeout(timer);
+      document.removeEventListener('fullscreenchange', onFs);
       engine?.dispose();
       engineRef.current = null;
     };
@@ -994,37 +1137,92 @@ export default function SolarSystem() {
   useEffect(() => { engineRef.current?.setOrbits(orbits); }, [orbits]);
   useEffect(() => { engineRef.current?.setLabels(labels); }, [labels]);
   useEffect(() => { engineRef.current?.setBelt(belt); }, [belt]);
+  useEffect(() => { engineRef.current?.setMoons(moons); }, [moons]);
+  useEffect(() => { engineRef.current?.setImagery(imagery); }, [imagery]);
 
   const selectBody = useCallback((id: string | null) => {
     engineRef.current?.select(id);
   }, []);
 
+  const onDateJump = (value: string) => {
+    if (!value) return;
+    const ms = Date.parse(`${value}T12:00:00Z`);
+    if (!Number.isNaN(ms)) engineRef.current?.setDate(ms);
+  };
+
+  const takeSnapshot = () => {
+    const url = engineRef.current?.snapshot();
+    if (!url) return;
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `solar-system-${new Date().toISOString().slice(0, 10)}.png`;
+    a.click();
+  };
+
+  const toggleFullscreen = () => {
+    if (document.fullscreenElement) document.exitFullscreen();
+    else containerRef.current?.requestFullscreen?.();
+  };
+
   const info = selectedId ? bodyInfo(selectedId) : null;
 
-  /* deterministic HUD geometry */
   const panelStyle: CSSProperties = isMobile
     ? { ...PANEL_BG, position: 'absolute', left: 10, right: 10, bottom: 118, maxHeight: '42%', zIndex: 30, overflowY: 'auto', padding: 16 }
-    : { ...PANEL_BG, position: 'absolute', right: 24, top: 88, width: 300, maxHeight: 'calc(100% - 150px)', zIndex: 30, overflowY: 'auto', padding: 20 };
+    : { ...PANEL_BG, position: 'absolute', right: 24, top: 88, width: 300, maxHeight: 'calc(100% - 180px)', zIndex: 30, overflowY: 'auto', padding: 20 };
 
-  const barStyle: CSSProperties = {
-    ...PANEL_BG,
-    position: 'absolute',
-    bottom: isMobile ? 10 : 20,
-    left: '50%',
-    transform: 'translateX(-50%)',
-    zIndex: 20,
-    maxWidth: '96vw',
-    padding: isMobile ? '6px 10px' : '8px 16px',
-  };
+  const dateInput = (
+    <input
+      type="date"
+      aria-label="Jump to date"
+      min="1800-01-01"
+      max="2050-12-31"
+      onChange={(e) => onDateJump(e.target.value)}
+      className="font-mono text-[10px] text-white/60 bg-transparent"
+      style={{ colorScheme: 'dark', border: '1px solid rgba(255,255,255,0.14)', borderRadius: 5, padding: '3px 6px' }}
+    />
+  );
+
+  const viewButtons = (
+    <div className="flex items-center gap-1">
+      <span className="font-mono text-[9px] tracking-[0.2em] text-white/30">VIEW</span>
+      {(['top', 'tilt', 'edge'] as const).map((k) => (
+        <button
+          key={k}
+          onClick={() => engineRef.current?.viewPreset(k)}
+          className="font-mono text-[9px] tracking-[0.18em] px-1.5 py-1 text-white/45 hover:text-primary transition-colors uppercase"
+        >
+          {k}
+        </button>
+      ))}
+    </div>
+  );
+
+  const imagerySeg = (
+    <div className="flex items-center gap-1.5">
+      <span className="font-mono text-[9px] tracking-[0.2em] text-white/30">IMAGERY</span>
+      <Segment<'photo' | 'code'>
+        options={[
+          { v: 'photo', label: 'NASA' },
+          { v: 'code', label: 'CODE' },
+        ]}
+        value={imagery}
+        onChange={setImagery}
+      />
+    </div>
+  );
 
   return (
     <>
       <SEOHead
         title="Solar System — Live Orbital Simulator"
-        description="A real-time 3D ephemeris of the solar system. Kepler's equation solved every frame against JPL J2000 orbital elements — planets shown where they actually are right now. Built with Three.js, WebGL and GLSL; every surface procedurally generated."
+        description="A real-time 3D ephemeris of the solar system. Kepler's equation solved every frame against JPL J2000 orbital elements — planets shown where they actually are right now. NASA imagery or fully procedural surfaces, in the browser."
       />
 
-      <div className="relative w-full overflow-hidden bg-black" style={{ height: 'calc(100dvh - 4rem)' }}>
+      <div
+        ref={containerRef}
+        className="relative w-full overflow-hidden bg-black"
+        style={{ height: isFs ? '100dvh' : 'calc(100dvh - 4rem)' }}
+      >
         <div ref={mountRef} className="absolute inset-0" style={{ zIndex: 0 }} />
 
         {/* boot veil */}
@@ -1045,8 +1243,8 @@ export default function SolarSystem() {
           )}
         </AnimatePresence>
 
-        {/* header block — hidden on mobile while the info sheet is open */}
-        {!(isMobile && info) && (
+        {/* header block */}
+        {!(isMobile && (info || drawer)) && (
           <div style={{ position: 'absolute', top: 14, left: isMobile ? 16 : 32, zIndex: 10, pointerEvents: 'none' }}>
             <Link
               to="/portfolio"
@@ -1067,48 +1265,29 @@ export default function SolarSystem() {
           </div>
         )}
 
-        {/* body picker — vertical rail on desktop, chip row on mobile */}
+        {/* body picker */}
         {isMobile ? (
-          <div
-            style={{
-              position: 'absolute',
-              left: 0,
-              right: 0,
-              bottom: 70,
-              zIndex: 20,
-              display: 'flex',
-              gap: 8,
-              overflowX: 'auto',
-              padding: '0 12px',
-            }}
-            className="no-scrollbar"
-          >
-            {RAIL_BODIES.map((b) => (
-              <button
-                key={b.id}
-                onClick={() => selectBody(selectedId === b.id ? null : b.id)}
-                style={{ ...PANEL_BG, flexShrink: 0, borderRadius: 999, padding: '5px 12px' }}
-                className={`font-mono text-[10px] tracking-[0.2em] transition-colors ${
-                  selectedId === b.id ? 'text-primary' : 'text-white/55'
-                }`}
-              >
-                {b.short}
-              </button>
-            ))}
-          </div>
+          !drawer && (
+            <div
+              style={{ position: 'absolute', left: 0, right: 0, bottom: 70, zIndex: 20, display: 'flex', gap: 8, overflowX: 'auto', padding: '0 12px' }}
+              className="no-scrollbar"
+            >
+              {RAIL_BODIES.map((b) => (
+                <button
+                  key={b.id}
+                  onClick={() => selectBody(selectedId === b.id ? null : b.id)}
+                  style={{ ...PANEL_BG, flexShrink: 0, borderRadius: 999, padding: '6px 13px' }}
+                  className={`font-mono text-[10px] tracking-[0.2em] transition-colors ${
+                    selectedId === b.id ? 'text-primary' : 'text-white/55'
+                  }`}
+                >
+                  {b.short}
+                </button>
+              ))}
+            </div>
+          )
         ) : (
-          <div
-            style={{
-              position: 'absolute',
-              left: 32,
-              top: '50%',
-              transform: 'translateY(-50%)',
-              zIndex: 10,
-              display: 'flex',
-              flexDirection: 'column',
-              gap: 2,
-            }}
-          >
+          <div style={{ position: 'absolute', left: 32, top: '50%', transform: 'translateY(-50%)', zIndex: 10, display: 'flex', flexDirection: 'column', gap: 2 }}>
             {RAIL_BODIES.map((b) => (
               <button
                 key={b.id}
@@ -1126,9 +1305,9 @@ export default function SolarSystem() {
           </div>
         )}
 
-        {/* info panel — right column on desktop, bottom sheet on mobile */}
+        {/* info panel */}
         <AnimatePresence>
-          {info && (
+          {info && !(isMobile && drawer) && (
             <motion.aside
               key={selectedId}
               initial={{ opacity: 0, y: isMobile ? 24 : 0 }}
@@ -1175,86 +1354,165 @@ export default function SolarSystem() {
           )}
         </AnimatePresence>
 
-        {/* control bar */}
-        <div style={barStyle}>
-          <div className="flex items-center gap-1.5 md:gap-3 flex-nowrap">
-            <button
-              onClick={() => setSpeedIdx((i) => Math.max(0, i - 1))}
-              aria-label="Slower"
-              className="p-1.5 rounded text-white/60 hover:text-primary transition-colors"
+        {/* mobile settings drawer */}
+        <AnimatePresence>
+          {isMobile && drawer && (
+            <motion.div
+              key="drawer"
+              initial={{ opacity: 0, y: 24 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 24 }}
+              transition={{ duration: 0.25 }}
+              style={{ ...PANEL_BG, position: 'absolute', left: 10, right: 10, bottom: 66, zIndex: 30, padding: 14 }}
             >
-              <Rewind size={14} />
-            </button>
-            <button
-              onClick={() => setPaused((p) => !p)}
-              aria-label={paused ? 'Play' : 'Pause'}
-              className="p-1.5 rounded text-foreground hover:text-primary transition-colors"
-            >
-              {paused ? <Play size={15} /> : <Pause size={15} />}
-            </button>
-            <button
-              onClick={() => setSpeedIdx((i) => Math.min(SPEEDS.length - 1, i + 1))}
-              aria-label="Faster"
-              className="p-1.5 rounded text-white/60 hover:text-primary transition-colors"
-            >
-              <FastForward size={14} />
-            </button>
-            {!isMobile && (
-              <button
-                onClick={() => setDir((d) => (d === 1 ? -1 : 1))}
-                aria-pressed={dir === -1}
-                className={`font-mono text-[10px] tracking-[0.2em] px-2 py-1 rounded transition-colors ${
-                  dir === -1 ? 'text-primary' : 'text-white/30 hover:text-white/60'
-                }`}
-              >
-                REV
+              <div className="flex items-center justify-between mb-3">
+                <p className="font-mono text-[9px] tracking-[0.3em] text-white/40">SIMULATOR CONTROLS</p>
+                <button onClick={() => setDrawer(false)} aria-label="Close" className="text-white/40 hover:text-primary text-sm px-1">✕</button>
+              </div>
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-2.5">
+                <button
+                  onClick={() => setDir((d) => (d === 1 ? -1 : 1))}
+                  aria-pressed={dir === -1}
+                  className={`font-mono text-[10px] tracking-[0.2em] px-2 py-1 rounded border transition-colors ${
+                    dir === -1 ? 'text-primary border-primary/50' : 'text-white/40 border-white/15'
+                  }`}
+                >
+                  REVERSE TIME
+                </button>
+                <span className="font-mono text-[10px] tracking-[0.2em] text-white/50">{SPEEDS[speedIdx].label}</span>
+              </div>
+              <div className="flex flex-wrap items-center gap-x-1 gap-y-1 mt-2.5">
+                <HudToggle label="ORBITS" on={orbits} onClick={() => setOrbits((v) => !v)} />
+                <HudToggle label="LABELS" on={labels} onClick={() => setLabels((v) => !v)} />
+                <HudToggle label="BELT" on={belt} onClick={() => setBelt((v) => !v)} />
+                <HudToggle label="MOONS" on={moons} onClick={() => setMoons((v) => !v)} />
+              </div>
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-2.5 mt-3">
+                {imagerySeg}
+                {viewButtons}
+              </div>
+              <div className="flex flex-wrap items-center gap-3 mt-3">
+                {dateInput}
+                <button onClick={takeSnapshot} aria-label="Save image" className="p-1.5 text-white/50 hover:text-primary transition-colors">
+                  <Camera size={15} />
+                </button>
+                <button onClick={toggleFullscreen} aria-label="Fullscreen" className="p-1.5 text-white/50 hover:text-primary transition-colors">
+                  {isFs ? <Minimize2 size={15} /> : <Maximize2 size={15} />}
+                </button>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* control deck */}
+        <div
+          style={{
+            position: 'absolute',
+            bottom: isMobile ? 10 : 16,
+            left: '50%',
+            transform: 'translateX(-50%)',
+            zIndex: 20,
+            maxWidth: '96vw',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            gap: 8,
+          }}
+        >
+          {/* secondary row — desktop only (mobile gets the drawer) */}
+          {!isMobile && (
+            <div style={{ ...PANEL_BG, padding: '5px 14px' }} className="flex items-center gap-4 flex-nowrap">
+              {imagerySeg}
+              <span style={{ width: 1, height: 18, background: 'rgba(255,255,255,0.1)' }} />
+              {viewButtons}
+              <span style={{ width: 1, height: 18, background: 'rgba(255,255,255,0.1)' }} />
+              <div className="flex items-center gap-1.5">
+                <span className="font-mono text-[9px] tracking-[0.2em] text-white/30">GO TO</span>
+                {dateInput}
+              </div>
+              <span style={{ width: 1, height: 18, background: 'rgba(255,255,255,0.1)' }} />
+              <button onClick={takeSnapshot} aria-label="Save image" title="Save a PNG of the current view" className="p-1 text-white/50 hover:text-primary transition-colors">
+                <Camera size={14} />
               </button>
-            )}
-            {!isMobile && (
-              <span className="font-mono text-[10px] tracking-[0.2em] text-white/50 text-center" style={{ minWidth: 68 }}>
-                {SPEEDS[speedIdx].label}
-              </span>
-            )}
-
-            <span style={{ width: 1, height: 22, background: 'rgba(255,255,255,0.1)' }} />
-
-            <div className="flex flex-col items-center leading-tight" style={{ minWidth: isMobile ? 128 : 168 }}>
-              <span ref={dateRef} className="font-mono text-[10px] md:text-xs text-foreground tabular-nums whitespace-nowrap" />
-              <span ref={deltaRef} className="font-mono text-[8px] md:text-[9px] tracking-[0.18em] text-primary/80 whitespace-nowrap" />
+              <button onClick={toggleFullscreen} aria-label="Fullscreen" title="Fullscreen" className="p-1 text-white/50 hover:text-primary transition-colors">
+                {isFs ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
+              </button>
             </div>
-            <button
-              onClick={() => engineRef.current?.resetToday()}
-              className="font-mono text-[9px] md:text-[10px] tracking-[0.2em] text-white/50 border border-white/15 rounded px-2 py-1 hover:border-primary hover:text-primary transition-colors"
-            >
-              TODAY
-            </button>
+          )}
 
-            {!isMobile && (
-              <>
-                <span style={{ width: 1, height: 22, background: 'rgba(255,255,255,0.1)' }} />
-                <div className="flex items-center">
-                  <HudToggle label="ORBITS" on={orbits} onClick={() => setOrbits((v) => !v)} />
-                  <HudToggle label="LABELS" on={labels} onClick={() => setLabels((v) => !v)} />
-                  <HudToggle label="BELT" on={belt} onClick={() => setBelt((v) => !v)} />
-                </div>
-              </>
-            )}
-            <button
-              onClick={() => engineRef.current?.resetView()}
-              aria-label="Reset view"
-              className="p-1.5 rounded text-white/60 hover:text-primary transition-colors"
-            >
-              <RotateCcw size={13} />
-            </button>
+          {/* primary row */}
+          <div style={{ ...PANEL_BG, padding: isMobile ? '6px 10px' : '8px 16px' }}>
+            <div className="flex items-center gap-1.5 md:gap-3 flex-nowrap">
+              <button onClick={() => setSpeedIdx((i) => Math.max(0, i - 1))} aria-label="Slower" className="p-1.5 rounded text-white/60 hover:text-primary transition-colors">
+                <Rewind size={14} />
+              </button>
+              <button onClick={() => setPaused((p) => !p)} aria-label={paused ? 'Play' : 'Pause'} className="p-1.5 rounded text-foreground hover:text-primary transition-colors">
+                {paused ? <Play size={15} /> : <Pause size={15} />}
+              </button>
+              <button onClick={() => setSpeedIdx((i) => Math.min(SPEEDS.length - 1, i + 1))} aria-label="Faster" className="p-1.5 rounded text-white/60 hover:text-primary transition-colors">
+                <FastForward size={14} />
+              </button>
+              {!isMobile && (
+                <>
+                  <button
+                    onClick={() => setDir((d) => (d === 1 ? -1 : 1))}
+                    aria-pressed={dir === -1}
+                    className={`font-mono text-[10px] tracking-[0.2em] px-2 py-1 rounded transition-colors ${
+                      dir === -1 ? 'text-primary' : 'text-white/30 hover:text-white/60'
+                    }`}
+                  >
+                    REV
+                  </button>
+                  <span className="font-mono text-[10px] tracking-[0.2em] text-white/50 text-center" style={{ minWidth: 68 }}>
+                    {SPEEDS[speedIdx].label}
+                  </span>
+                </>
+              )}
+
+              <span style={{ width: 1, height: 22, background: 'rgba(255,255,255,0.1)' }} />
+
+              <div className="flex flex-col items-center leading-tight" style={{ minWidth: isMobile ? 126 : 168 }}>
+                <span ref={dateRef} className="font-mono text-[10px] md:text-xs text-foreground tabular-nums whitespace-nowrap" />
+                <span ref={deltaRef} className="font-mono text-[8px] md:text-[9px] tracking-[0.18em] text-primary/80 whitespace-nowrap" />
+              </div>
+              <button
+                onClick={() => engineRef.current?.resetToday()}
+                className="font-mono text-[9px] md:text-[10px] tracking-[0.2em] text-white/50 border border-white/15 rounded px-2 py-1 hover:border-primary hover:text-primary transition-colors"
+              >
+                TODAY
+              </button>
+
+              {!isMobile && (
+                <>
+                  <span style={{ width: 1, height: 22, background: 'rgba(255,255,255,0.1)' }} />
+                  <div className="flex items-center">
+                    <HudToggle label="ORBITS" on={orbits} onClick={() => setOrbits((v) => !v)} />
+                    <HudToggle label="LABELS" on={labels} onClick={() => setLabels((v) => !v)} />
+                    <HudToggle label="BELT" on={belt} onClick={() => setBelt((v) => !v)} />
+                    <HudToggle label="MOONS" on={moons} onClick={() => setMoons((v) => !v)} />
+                  </div>
+                </>
+              )}
+              {isMobile && (
+                <button
+                  onClick={() => setDrawer((d) => !d)}
+                  aria-label="More controls"
+                  aria-expanded={drawer}
+                  className={`p-1.5 rounded transition-colors ${drawer ? 'text-primary' : 'text-white/60 hover:text-primary'}`}
+                >
+                  <Settings2 size={15} />
+                </button>
+              )}
+              <button onClick={() => engineRef.current?.resetView()} aria-label="Reset view" className="p-1.5 rounded text-white/60 hover:text-primary transition-colors">
+                <RotateCcw size={13} />
+              </button>
+            </div>
           </div>
         </div>
 
         {/* hint — desktop only */}
         {!isMobile && (
-          <p
-            style={{ position: 'absolute', bottom: 24, right: 32, zIndex: 10 }}
-            className="font-mono text-[9px] tracking-[0.25em] text-white/20"
-          >
+          <p style={{ position: 'absolute', bottom: 18, right: 32, zIndex: 10 }} className="font-mono text-[9px] tracking-[0.25em] text-white/20">
             DRAG — ORBIT · SCROLL — ZOOM · CLICK — FOCUS · SPACE — PAUSE
           </p>
         )}
@@ -1266,13 +1524,15 @@ export default function SolarSystem() {
         <p className="font-sans-body text-sm text-white/60 leading-relaxed max-w-2xl">
           This is a live ephemeris, not an animation. Every frame, Kepler's equation is solved by
           Newton–Raphson iteration against JPL J2000 orbital elements — eccentricity, inclination and
-          orbital phase are real, so the planets sit where they actually are for the simulated date
-          (valid 1800–2050 AD). Every surface, ring and cloud layer is procedurally generated from
-          seeded noise at load — the page ships zero image assets. Distances compress on a power
-          curve and radii sit on a cube-root scale so all eight planets stay visible at once.
+          orbital phase are real, so the planets sit where they actually are for any date from 1800
+          to 2050. Surfaces run in two modes: real photographic maps built from NASA mission imagery
+          (Blue Marble, LRO, MESSENGER, Viking, Voyager, Cassini), or a fully procedural set
+          generated from seeded noise in the browser — flip the IMAGERY toggle to compare. Distances
+          compress on a power curve and radii sit on a cube-root scale so all eight planets stay
+          visible at once.
         </p>
         <p className="font-mono text-[10px] tracking-[0.2em] text-white/35 mt-4">
-          THREE.JS · WEBGL · GLSL SHADERS · CUSTOM KEPLER SOLVER · PROCEDURAL TEXTURES · REACT + TYPESCRIPT ·{' '}
+          THREE.JS · WEBGL · GLSL SHADERS · CUSTOM KEPLER SOLVER · NASA IMAGERY + PROCEDURAL TEXTURES ·{' '}
           <a
             href="https://github.com/macraemyintminhein98/macraemyint-portfolio"
             target="_blank"
@@ -1281,6 +1541,9 @@ export default function SolarSystem() {
           >
             VIEW SOURCE →
           </a>
+        </p>
+        <p className="font-mono text-[9px] tracking-[0.15em] text-white/20 mt-2">
+          PHOTO MAPS: NASA (PUBLIC DOMAIN) · PLANET MAPS BY JAMES HASTINGS-TREW FROM NASA IMAGERY
         </p>
       </section>
     </>

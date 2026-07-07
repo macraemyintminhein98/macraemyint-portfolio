@@ -90,7 +90,7 @@ export interface PlanetDef {
 export const SUN_RADIUS = 5;
 export const auToScene = (au: number) => 18 * Math.pow(au, 0.78);
 export const planetRadius = (km: number) => 0.11 * Math.cbrt(km);
-export const moonRadius = (km: number) => 0.062 * Math.cbrt(km);
+export const moonRadius = (km: number) => Math.max(0.17, 0.062 * Math.cbrt(km));
 
 export const SUN = {
   id: 'sun',
@@ -244,7 +244,30 @@ export const PLANETS: PlanetDef[] = [
       caps: { color: '#f2ede4', extent: 0.1 },
     },
     atmosphere: { color: '#e8a06a', scale: 1.025, intensity: 0.35 },
-    moons: [],
+    moons: [
+      {
+        id: 'phobos',
+        name: 'Phobos',
+        radiusKm: 11.1,
+        periodDays: 0.319,
+        dist: 2.9,
+        color: '#8a8078',
+        texture: { kind: 'rocky', seed: 111, palette: ['#3a3631', '#5c564e', '#7d766c', '#9c948a'], craters: 14 },
+        physical: { radiusKm: '11.1 km', period: '7.66 h', parent: 'Mars', type: 'Moon — likely captured asteroid' },
+        fact: 'Orbits faster than Mars rotates, so it rises in the west — and it is spiraling inward, doomed to break apart in ~50 million years.',
+      },
+      {
+        id: 'deimos',
+        name: 'Deimos',
+        radiusKm: 6.2,
+        periodDays: 1.263,
+        dist: 3.9,
+        color: '#9a9288',
+        texture: { kind: 'rocky', seed: 113, palette: ['#494540', '#6d675f', '#8f887d', '#aaa298'], craters: 8 },
+        physical: { radiusKm: '6.2 km', period: '30.3 h', parent: 'Mars', type: 'Moon — likely captured asteroid' },
+        fact: 'Escape velocity is about 5.6 m/s — a sprinting human could very nearly jump off it.',
+      },
+    ],
     physical: {
       type: 'Terrestrial',
       radiusKm: '3,389.5 km',
@@ -447,7 +470,19 @@ export const PLANETS: PlanetDef[] = [
       turbulence: 0.06,
       spot: { u: 0.3, v: 0.42, ru: 0.045, rv: 0.03, color: '#1d2f6e' },
     },
-    moons: [],
+    moons: [
+      {
+        id: 'triton',
+        name: 'Triton',
+        radiusKm: 1353.4,
+        periodDays: -5.88,
+        dist: 6.6,
+        color: '#cfd8da',
+        texture: { kind: 'ice', seed: 127, palette: ['#7e8a8c', '#a9b6b6', '#cdd8d6', '#eef4f1'] },
+        physical: { radiusKm: '1,353.4 km', period: '5.88 d (retrograde)', parent: 'Neptune', type: 'Moon — captured Kuiper Belt object' },
+        fact: 'Orbits backwards — the only large moon that does — almost certainly a captured Kuiper Belt world, with active geysers of nitrogen ice.',
+      },
+    ],
     physical: {
       type: 'Ice giant',
       radiusKm: '24,622 km',
